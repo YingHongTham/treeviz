@@ -1,0 +1,10 @@
+.treenode {
+	border: 3px solid black;
+	border-radius: 50%;
+	width: 50px;
+	height: 50px;
+	text-align: center;
+	/*transform: translateY(-50%);*/
+	line-height: 50px;
+	vertical-align: center; 
+}
