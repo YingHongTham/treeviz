@@ -5,12 +5,16 @@ class Pos {
 		this.x = x;
 		this.y = y;
 	}
-	copy() {
+	make_copy() {
 		return new Pos(this.x, this.y);
 	}
 	update(a) {
 		this.x = a.x;
 		this.y = a.y;
+	}
+	add(a) {
+		this.x += a.x;
+		this.y += a.y;
 	}
 }
 
@@ -26,7 +30,7 @@ var start_pos = new Pos(0,0);
 var root_pos = new Pos(screen.width/2, 0);
 var compare_offset = new Pos(0, 50);
 let level_diff = 80.0;
-let horiz = screen.width * 1.0 / 2;
+let horiz = screen.width * 1.0 / 3;
 let anime_duration = 800;
 let RED = 'rgb(255,0,0)';
 let GREEN = 'rgb(0,255,0)';
@@ -50,30 +54,22 @@ body.addEventListener('keydown', (event) => {
 // for some reaons, need to seek current time
 // and manually resume to that time
 button_rotate_left.onclick = function() {
-	cur_time = mytimeline.currentTime;
+	//var cur_time = mytimeline.currentTime;
 	bst.rotateRootLeft();
-	mytimeline.pause();
-	mytimeline.seek(cur_time);
-	mytimeline.play();
+	//mytimeline.pause();
+	//mytimeline.seek(cur_time);
+	//mytimeline.play();
 };
 button_rotate_right.onclick = function() {
-	cur_time = mytimeline.currentTime;
 	bst.rotateRootRight();
-	mytimeline.pause();
-	mytimeline.seek(cur_time);
-	mytimeline.play();
 };
 button_insert.onclick = function() {
 	var x = document.getElementById("insert_value");
-	cur_time = mytimeline.currentTime;
 	bst.insert(x.value);
-	mytimeline.pause();
-	mytimeline.seek(cur_time);
-	mytimeline.play();
 };
 button_search.onclick = function() {
 	var x = document.getElementById("search_value");
-	cur_time = mytimeline.currentTime;
+	var cur_time = mytimeline.currentTime;
 	bst.searchVal(x.value);
 	mytimeline.pause();
 	mytimeline.seek(cur_time);
@@ -81,7 +77,7 @@ button_search.onclick = function() {
 }
 button_delete.onclick = function() {
 	var x = document.getElementById("delete_value");
-	cur_time = mytimeline.currentTime;
+	var cur_time = mytimeline.currentTime;
 	bst.popVal(x.value);
 	mytimeline.pause();
 	mytimeline.seek(cur_time);
@@ -109,6 +105,11 @@ function add_simultaneous(anim_list) {
 }
 
 //==============================================================================
+// methods typically split into operations updating the "abstract" node structures,
+// i.e. the left, right node, and the intended position of the node
+// and operations that actually move the node to a new position
+// of course some combine them; we try to make clear the distinction,
+// so 
 class Node {
 	constructor(val) {
 		this.val = val;
@@ -118,20 +119,11 @@ class Node {
 		this.elem = document.createElement("div");
 		this.elem.className = "treenode";
 		this.elem.innerHTML = val;
-		this.pos = start_pos.copy();
+		this.pos = start_pos.make_copy();
 		//start_pos.y += 50;
 		this.elem.style =
 			`position:absolute; left:${this.pos.x}px; top:${this.pos.y}px;`;
 		p.append(this.elem);
-	}
-
-	moveto(pos) {
-		mytimeline.add({
-			targets: this.elem,
-			translateX: pos.x,
-			translateY: pos.y
-		});
-		this.pos.update(pos);
 	}
 
 	moveSubtreeTo(pos) {
@@ -145,7 +137,7 @@ class Node {
 			translateX: pos.x,
 			translateY: pos.y
 		}];
-		//this.pos = pos;
+		//this.pos = pos.make_copy();
 		if (this.left != null)
 			anim_list = anim_list.concat(this.left.getSubtreeAnimList(this.getLeftChildPos()));
 		if (this.right != null)
@@ -189,13 +181,16 @@ class Node {
 	placeAtRoot() {
 		this.moveto(root_pos);
 	}
-	setLeftChild(newnode) {
-		this.left = newnode;
-		newnode.moveto(this.getLeftChildPos());
+
+	setAsLeftChildOf(p, move=false) {
+		p.left = this;
+		if (move)
+			this.moveto(p.getLeftChildPos());
 	}
-	setRightChild(newnode) {
-		this.right = newnode;
-		newnode.moveto(this.getRightChildPos());
+	setAsRightChildOf(p, move=false) {
+		p.right = this;
+		if (move)
+			this.moveto(p.getRightChildPos());
 	}
 	setLeftSubtree(subtree_root) {
 		this.left = subtree_root;
@@ -209,7 +204,11 @@ class Node {
 	}
 	setAsRoot() {
 		//this.moveto(root_pos);
+		var cur_time = mytimeline.currentTime;
 		this.moveSubtreeTo(root_pos);
+		mytimeline.pause();
+		mytimeline.seek(cur_time);
+		mytimeline.play();
 	}
 	popLeftChild() {
 		var n = this.left;
@@ -221,6 +220,8 @@ class Node {
 		this.left = null;
 		return n;
 	}
+	//=============================================================================
+	//implement in tree?
 	rotateLeft() {
 		if (this.right == null) {
 			console.log("cannot rotateLeft, rightnode is null");
@@ -260,9 +261,33 @@ class Node {
 	throwaway() {
 		this.moveto(new Pos(0, 2*level_diff));
 	}
+	//=============================================================================
+	//should be private but the #varname thing isn't working
+	moveto(pos) {
+		var cur_time = mytimeline.currentTime;
+		mytimeline.add({
+			targets: this.elem,
+			translateX: pos.x,
+			translateY: pos.y
+		});
+		mytimeline.pause();
+		mytimeline.seek(cur_time);
+		mytimeline.play();
+		this.pos.update(pos);
+	}
+	// avoid using these as they call methods
+	// that should be private
+	//setLeftChild(newnode) {
+	//	this.left = newnode;
+	//	newnode.moveto(this.getLeftChildPos());
+	//}
+	//setRightChild(newnode) {
+	//	this.right = newnode;
+	//	newnode.moveto(this.getRightChildPos());
+	//}
 }
-
-
+//end Node class defn
+//=============================================================================
 //=============================================================================
 // Binary Search Tree
 class BST {
@@ -275,8 +300,9 @@ class BST {
 	insert(val, rt = this.root){
 		var newnode = new Node(val);
 		if (this.isEmpty()) {
-			this.root = newnode;
-			newnode.placeAtRoot();
+			//this.root = newnode;
+			//newnode.placeAtRoot();
+			this.setNodeAsRoot(newnode);
 			return;
 		}
 		this.insert_attempt(newnode, rt);
@@ -284,19 +310,20 @@ class BST {
 	insert_attempt(newnode, cur) {
 		if (newnode.compare_leq(cur)) {
 			if (cur.left == null)
-				cur.setLeftChild(newnode);
+				//cur.setLeftChild(newnode);
+				newnode.setAsLeftChildOf(cur);
 			else
 				this.insert_attempt(newnode,cur.left);
 		}
 		else {
 			if (cur.right == null)
-				cur.setRightChild(newnode);
+				newnode.setAsRightChildOf(cur);
 			else
 				this.insert_attempt(newnode,cur.right);
 		}
 
 	}
-	setAsRoot(node) {
+	setNodeAsRoot(node) {
 		this.root = node;
 		if (node != null)
 			node.setAsRoot();
@@ -312,9 +339,7 @@ class BST {
 			updatePos();
 			return;
 		}
-		this.setAsRoot(this.root.rotateLeft());
-		//this.root = this.root.rotateLeft();
-		//this.updatePos();
+		this.setNodeAsRoot(this.root.rotateLeft());
 	}
 	rotateRootRight() {
 		if (this.root.left == null) {
@@ -322,7 +347,7 @@ class BST {
 			updatePos();
 			return;
 		}
-		this.setAsRoot(this.root.rotateRight());
+		this.setNodeAsRoot(this.root.rotateRight());
 	}
 	// returns [node, parent]
 	// parent is null if node==root
@@ -586,6 +611,13 @@ mytimeline.play();
 //bst.rotateRootRight();
 
 
+test = {
+	x:1,
+	y:2
+};
+test2 = test;
+test2.x = 3;
+console.log("test.x: ", test.x);
 //==============================================================================
 // splay tree
 // new strategry: tree only handles the node tree structure,
