@@ -22,7 +22,7 @@ class Pos {
 function add(a,b) {
 	return new Pos(a.x + b.x, a.y + b.y);
 }
-
+globalvar = 0
 
 //==============================================================================
 // initialize
@@ -31,7 +31,7 @@ var root_pos = new Pos(screen.width/2, 0);
 var compare_offset = new Pos(0, 50);
 let level_diff = 80.0;
 let horiz = screen.width * 1.0 / 3;
-let anime_duration = 800;
+let anime_duration = 300;
 let RED = 'rgb(255,0,0)';
 let GREEN = 'rgb(0,255,0)';
 let BLUE = 'rgb(0,0,255)';
@@ -115,6 +115,7 @@ class Node {
 		this.val = val;
 		this.left = null;
 		this.right = null;
+		this.height_diff = 0; // for AVLTrees
 		let p = document.getElementById("outdiv");
 		this.elem = document.createElement("div");
 		this.elem.className = "treenode";
@@ -124,6 +125,20 @@ class Node {
 		this.elem.style =
 			`position:absolute; left:${this.pos.x}px; top:${this.pos.y}px;`;
 		p.append(this.elem);
+	}
+	destroy() {
+		var el = this.elem;
+		var cur_time = mytimeline.currentTime;
+		mytimeline.add({
+			targets: this.elem,
+			easing: 'easeOutCirc',
+			complete: function(anim) {
+				el.remove();
+			}
+		});
+		mytimeline.pause();
+		mytimeline.seek(cur_time);
+		mytimeline.play();
 	}
 
 	moveSubtreeTo(pos) {
@@ -160,11 +175,17 @@ class Node {
 		this.moveto(add(this.pos, shift));
 	}
 
-	compare_leq(othernode) {
+	compareNode(othernode) {
+		if (othernode == null) {
+			console.log("othernode is null");
+			return 2;
+		}
 		this.moveto(add(othernode.pos, compare_offset));
-		if (this.val <= othernode.val)
-			return true;
-		return false;
+		if (this.val == othernode.val)
+			return 0;
+		if (this.val < othernode.val)
+			return -1;
+		return 1;
 	}
 
 	getlevel() {
@@ -245,18 +266,18 @@ class Node {
 		return leftchild;
 	}
 	highlight(color, duration=anime_duration) {
+		var cur_time = mytimeline.currentTime;
 		mytimeline.add({
 			targets: this.elem,
 			background: color,
 			duration: duration
 		});
+		mytimeline.pause();
+		mytimeline.seek(cur_time);
+		mytimeline.play();
 	}
 	unhighlight() {
-		mytimeline.add({
-			targets: this.elem,
-			background: WHITE,
-			duration: 50
-		});
+		this.highlight(WHITE, 50);
 	}
 	throwaway() {
 		this.moveto(new Pos(0, 2*level_diff));
@@ -288,40 +309,25 @@ class Node {
 }
 //end Node class defn
 //=============================================================================
+// ValueNode
+// TODO: used for search? helpful for visualizing
 //=============================================================================
-// Binary Search Tree
-class BST {
+class ValueNode extends Node {
+	constructor(val) {
+		super(val);
+		this.elem.className = "";
+	}
+}
+//end Node class defn
+//=============================================================================
+// Tree
+//=============================================================================
+class Tree {
 	constructor() {
 		this.root = null;
 	}
 	isEmpty() {
 		return this.root == null;
-	}
-	insert(val, rt = this.root){
-		var newnode = new Node(val);
-		if (this.isEmpty()) {
-			//this.root = newnode;
-			//newnode.placeAtRoot();
-			this.setNodeAsRoot(newnode);
-			return;
-		}
-		this.insert_attempt(newnode, rt);
-	}
-	insert_attempt(newnode, cur) {
-		if (newnode.compare_leq(cur)) {
-			if (cur.left == null)
-				//cur.setLeftChild(newnode);
-				newnode.setAsLeftChildOf(cur);
-			else
-				this.insert_attempt(newnode,cur.left);
-		}
-		else {
-			if (cur.right == null)
-				newnode.setAsRightChildOf(cur);
-			else
-				this.insert_attempt(newnode,cur.right);
-		}
-
 	}
 	setNodeAsRoot(node) {
 		this.root = node;
@@ -336,7 +342,7 @@ class BST {
 			console.log("cannot rotateRootLeft, rightnode is null");
 			// although nothing changed, need to do this
 			// otherwise the animations would refresh...
-			updatePos();
+			this.updatePos();
 			return;
 		}
 		this.setNodeAsRoot(this.root.rotateLeft());
@@ -344,27 +350,94 @@ class BST {
 	rotateRootRight() {
 		if (this.root.left == null) {
 			console.log("cannot rotateRootRight, leftnode is null");
-			updatePos();
+			this.updatePos();
 			return;
 		}
 		this.setNodeAsRoot(this.root.rotateRight());
 	}
+	// puts newnode in place of node as child of prev
+	// (prev is null if node is root)
+	// nodeonly=false takes the entire subtree at newnode to node
+	inPlaceOf(prev, node, newnode, nodeonly=true) {
+		if (prev == null) {
+			this.root = newnode;
+		}
+		else if (prev.left == node)
+			prev.left = newnode;
+		else
+			prev.right = newnode;
+		if (nodeonly) {
+			if (newnode != null) {
+				if (newnode != node.left)
+					newnode.left = node.left;
+				if (newnode != node.right)
+					newnode.right = node.right;
+			}
+		}
+	}
+}
+// end Tree class defn
+//=============================================================================
+// Binary Search Tree
+//=============================================================================
+class BST extends Tree {
+	constructor() {
+		super();
+	}
+	insert(val, rt = this.root){
+		var newnode = new Node(val);
+		if (this.isEmpty()) {
+			//this.root = newnode;
+			//newnode.placeAtRoot();
+			this.setNodeAsRoot(newnode);
+			return;
+		}
+		this.insert_attempt(newnode, rt);
+	}
+	insert_attempt(newnode, cur) {
+		var comp = newnode.compareNode(cur);
+		if (comp <= 0) {
+			if (cur.left == null) {
+				//cur.setLeftChild(newnode);
+				newnode.setAsLeftChildOf(cur, true);
+				this.updatePos();
+			}
+			else
+				this.insert_attempt(newnode,cur.left);
+		}
+		else {
+			if (cur.right == null) {
+				newnode.setAsRightChildOf(cur, true);
+				this.updatePos();
+			}
+			else
+				this.insert_attempt(newnode,cur.right);
+		}
+
+	}
 	// returns [node, parent]
 	// parent is null if node==root
-	searchVal(val, node=this.root, prev=null) {
-		if (node == null)
+	searchVal(val, node=this.root, prev=null, visNode=null) {
+		if (visNode == null) {
+			visNode = new ValueNode(val);
+		}
+		visNode.compareNode(node);
+		if (node == null) {
+			visNode.destroy();
 			return [null, null];
+		}
 		if (node.val == val) {
 			node.highlight(GREEN, 500);
 			node.unhighlight();
+			visNode.destroy();
 			return [node, prev];
 		}
 		node.highlight(BLUE);
 		node.unhighlight();
 		if (val < node.val)
-			return this.searchVal(val, node.left, node);
+			return this.searchVal(val, node.left, node, visNode);
 		else
-			return this.searchVal(val, node.right, node);
+			return this.searchVal(val, node.right, node, visNode);
 	}
 	popVal(val) {
 		var node_and_parent = this.searchVal(val);
@@ -419,28 +492,15 @@ class BST {
 			}
 		}
 	}
-	inPlaceOf(prev, node, newnode, nodeonly=true) {
-		if (prev == null) {
-			this.root = newnode;
-		}
-		else if (prev.left == node)
-			prev.left = newnode;
-		else
-			prev.right = newnode;
-		if (nodeonly) {
-			if (newnode != null) {
-				if (newnode != node.left)
-					newnode.left = node.left;
-				if (newnode != node.right)
-					newnode.right = node.right;
-			}
-		}
+}
+// end BST class defn
+//=============================================================================
+// Splay Tree
+//=============================================================================
+class SplayTree extends BST {
+	constructor() {
+		super();
 	}
-	//=================================
-	//stuff for splay tree
-	//yea i know it's a mess now
-	//but just wanted to see the splaying action
-	//since BST already has stuff
 	splay(val) {
 		if (this.root == null)
 			return false;
@@ -453,6 +513,7 @@ class BST {
 					this.rotateRootRight();
 					return true;
 				}
+				// x = p.left = g.left.left
 				else if (val < p.val) {
 					if (p.left != null) {
 						this.zigzigRight();
@@ -462,6 +523,7 @@ class BST {
 						return false;
 					}
 				}
+				// x = p.right = g.left.right
 				else {
 					if (p.right != null) {
 						this.zigzagRight();
@@ -472,12 +534,14 @@ class BST {
 					}
 				}
 			}
+			// val > this.root.val
 			else {
 				p = this.root.right;
 				if (val == p.val) {
 					this.rotateRootLeft();
 					return true;
 				}
+				// x = p.right = g.right.right
 				else if (val > p.val) {
 					if (p.right != null) {
 						this.zigzigLeft();
@@ -487,6 +551,7 @@ class BST {
 						return false;
 					}
 				}
+				// x = p.left = g.right.left
 				else {
 					if (p.left != null) {
 						this.zigzagLeft();
@@ -551,17 +616,72 @@ class BST {
 		this.updatePos();
 	}
 }
+// end SplayTree class defn
+//=============================================================================
+// AVL Tree
+//=============================================================================
+class AVLTree extends BST {
+	constructor() {
+		super();
+	}
+	insertBalance(val) {
+		var newnode = new Node(val);
+		if (this.isEmpty()) {
+			this.setNodeAsRoot(newnode);
+			return;
+		}
+		var node = this.root;
+		var nodepath = [];
+		while (true) {
+			nodepath.push(node);
+			var comp = newnode.compareNode(node);
+			if (comp <= 0) {
+				if (node.left == null) {
+					newnode.setAsLeftChildOf(node, true);
+					this.updatePos();
+					break;
+				}
+				else {
+					node = node.left;
+				}
+			}
+			else {
+				if (node.right == null) {
+					newnode.setAsRightChildOf(node, true);
+					this.updatePos();
+					break;
+				}
+				else {
+					node = node.right;
+				}
+			}
+		}
+		// the rebalancing part
+		if (nodepath.length <= 2)
+			return;
+		var x = newnode;
+		var p = nodepath.pop();
+		var g = nodepath.pop();
+		/*
+		while (true) {
+			if 
+			
+			if (nodepath.isEmpty())
+				break;
+			x = p;
+			p = g;
+			g = nodepath.pop();
+		}
+		*/
 
-//TODO make clear which methods are to be made public
-// since the whole point of this is to be able to use
-// this as a library to code these trees
-// but with visualization for the steps
-// for example, Node.moveto should not be made public,
-// and generally things to do with pos shouldn't be
-// public things: compare_leq, getlevel, setLeftChild etc
-//
+	}
+}
+
 // TODO: add animation to operations that are not allowed,
 // e.g. rotateLeft but rightchild=null
+//
+// TODO: add "action list" to show operations being performed
+// (can replace previous idea about unallowed operations)
 
 //=============================================================================
 // testing out
@@ -570,61 +690,11 @@ function rand() {
 }
 
 ls = [8,4,12,2,3,5,7,0,1,9,6];
-bst = new BST();
+bst = new AVLTree();
 for (var i = 0; i < ls.length; i++) {
 	//ls[i] = rand();
-	bst.insert(ls[i]);
-}
-for (var i = 0; i < 8; i++) {
-	bst.splay(ls[rand()]);
+	bst.insertBalance(ls[i]);
 }
 mytimeline.pause();
 mytimeline.seek(anime_duration * 36 - 100);
 mytimeline.play();
-//for (var i = 0; i < ls.length; i++) {
-	//bst.popVal(ls[i]);
-//}
-//bst.insert(1);
-//bst.insert(0);
-//bst.insert(2);
-//bst.insert(4);
-//bst.insert(0);
-//bst.insert(0.5);
-//bst.insert(0.75);
-//bst.insert(0.6);
-//bst.insert(0.65);
-//bst.insert(0.55);
-//console.log("delete 0");
-//bst.popVal(2);
-//console.log("delete 1");
-//bst.popVal(0);
-//bst.updatePos();
-//mytimeline.pause();
-//mytimeline.seek(10000);
-//mytimeline.play();
-
-//bst.root.moveSubtreeTo(bst.root.getLeftChildPos());
-//bst.root.moveSubtreeTo(bst.root.getRightChildPos());
-//bst.root.moveSubtreeTo(root_pos);
-
-//bst.rotateRootLeft();
-//bst.rotateRootRight();
-
-
-test = {
-	x:1,
-	y:2
-};
-test2 = test;
-test2.x = 3;
-console.log("test.x: ", test.x);
-//==============================================================================
-// splay tree
-// new strategry: tree only handles the node tree structure,
-// only update positions outside manually
-// (or write special function for it)
-//class SplayTree {
-//	constructor() {
-//		this.root = null;
-//	}
-//}
