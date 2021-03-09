@@ -26,18 +26,28 @@ globalvar = 0
 
 //==============================================================================
 // initialize
-var start_pos = new Pos(0,50);
-var root_pos = new Pos(screen.width/2, 50);
-var compare_offset = new Pos(0, 50);
-let node_radius = 20;
 let level_diff = 80.0;
+let start_pos = new Pos(30,50);
+let	root_pos = new Pos(screen.width/2, 50);
+let trash_pos = new Pos(30, 2*level_diff);
+let compare_offset = new Pos(40, 0);
+let outdiv = document.getElementById("outdiv");
+//let errorbox = document.createElement("div");
+//errorbox.style = `position:absolute; left:${screen.width * 1.0 / 4}px; top:${root_pos.y + 20}px;
+//	width:${screen.width * 1.0 / 8}px`;
+let errorbox_style = `position:absolute; left:${screen.width * 1.0 / 4}px; top:${root_pos.y + 20}px;
+	width:${screen.width * 1.0 / 8}px`;
+//outdiv.appendChild(errorbox);
+let node_radius = 20;
 let horiz = screen.width * 1.0 / 3;
 let anime_duration = 300;
+let highlight_duration = 500;
 let RED = 'rgb(255,0,0)';
 let YELLOW = 'rgb(128,128,0)';
 let GREEN = 'rgb(0,255,0)';
 let BLUE = 'rgb(0,0,255)';
 let WHITE = 'rgb(255,255,255)';
+var mytree = null;
 
 // buttons
 let body = document.body;
@@ -56,44 +66,56 @@ body.addEventListener('keydown', (event) => {
 // for some reaons, need to seek current time
 // and manually resume to that time
 button_rotate_left.onclick = function() {
-	//var cur_time = mytimeline.currentTime;
-	bst.rotateRootLeft();
-	//mytimeline.pause();
-	//mytimeline.seek(cur_time);
-	//mytimeline.play();
+	mytree.rotateRootLeftFromButton();
 };
 button_rotate_right.onclick = function() {
-	bst.rotateRootRight();
+	mytree.rotateRootRightFromButton();
 };
 button_insert.onclick = function() {
 	var x = document.getElementById("insert_value");
-	bst.insert(x.value);
+	mytree.insert(Number(x.value));
 };
 button_search.onclick = function() {
 	var x = document.getElementById("search_value");
 	var cur_time = mytimeline.currentTime;
-	bst.searchVal(x.value);
-	mytimeline.pause();
-	mytimeline.seek(cur_time);
-	mytimeline.play();
+	mytree.searchVal(Number(x.value));
+	skipTo(cur_time);
 }
 button_delete.onclick = function() {
 	var x = document.getElementById("delete_value");
 	var cur_time = mytimeline.currentTime;
-	bst.popVal(x.value);
-	mytimeline.pause();
-	mytimeline.seek(cur_time);
-	mytimeline.play();
+	mytree.popVal(x.value);
+	skipTo(cur_time);
+}
+button_newBST.onclick = function() {
+	if (mytree != null)
+		mytree.destroy();
+	//mytimeline = newTimeline();
+	mytree = new BST();
+}
+button_newAVL.onclick = function() {
+	if (mytree != null)
+		mytree.destroy();
+	//mytimeline = newTimeline();
+	mytree = new AVLTree();
 }
 
 //==============================================================================
 // keeps track of animations to execute,
 // mytimeline.add adds to queue, executes one after another
-var mytimeline = anime.timeline({
-	// these settings apply to all animations added to mytimeline
-	easing: 'easeInOutExpo',
-	duration: anime_duration
-});
+var mytimeline = newTimeline();
+function newTimeline() {
+	return anime.timeline({
+		// these settings apply to all animations added to mytimeline
+		easing: 'easeInOutExpo',
+		duration: anime_duration
+	});
+}
+function skipTo(newtime) {
+	mytimeline.pause();
+	mytimeline.seek(newtime);
+	mytimeline.play();
+}
 
 //==============================================================================
 // make animations simultaneous by introducing negative delay
@@ -105,9 +127,7 @@ function add_simultaneous(anim_list) {
 	for (var i = 1; i < anim_list.length; i++) {
 		mytimeline.add(anim_list[i], '-=' + anime_duration);
 	}
-	mytimeline.pause();
-	mytimeline.seek(cur_time);
-	mytimeline.play();
+	skipTo(cur_time);
 }
 
 //==============================================================================
@@ -117,18 +137,20 @@ function add_simultaneous(anim_list) {
 // of course some combine them; we try to make clear the distinction,
 // so 
 class Node {
-	constructor(val) {
+	constructor(val, sideval=null) {
 		this.val = val;
 		this.left = null;
 		this.right = null;
 		this.height_diff = 0; // for AVLTrees
-		let p = document.getElementById("outdiv");
+		// HTML stuff
+		var p = document.getElementById("outdiv");
 		this.elem = document.createElement("div");
 		this.elem.className = "divstyle";
 		//this.elem.innerHTML = val;
 		this.pos = start_pos.make_copy();
 		this.elem.style =
 			`z-index:2; position:absolute; left:${this.pos.x}px; top:${this.pos.y}px;`;
+		this.elem.style.zIndex = "2";
 		p.append(this.elem);
 		this.elemValue = document.createElement("div");
 		this.elemValue.className = "treenode";
@@ -136,40 +158,38 @@ class Node {
 		this.elemValue.style =
 			`z-index:2; position:absolute; left:-${node_radius}px; top:-${node_radius}px;`;
 		this.elemSidevalue = document.createElement("div");
-		this.elemSidevalue.innerHTML = this.height_diff;
-		this.elemSidevalue.style = 'position:absolute';
-		this.elem.appendChild(this.elemSidevalue);
+		this.elemSidevalue.innerHTML = (sideval == null) ? "" : this.height_diff;
+		this.elemSidevalue.style = `position:absolute; top:${node_radius+10}px`;
 		// diagonal lines
 		this.rightline = document.createElement("img");
 		//this.rightline.className = "linestyle";
 		this.rightline.src = "rightdiagonal.png";
 		this.rightline.style =
-			`z-index:1; position:absolute; left:0px; top:0px; width:100px; height:${level_diff}px`;
+			`z-index:-1; position:absolute; left:0px; top:0px; width:100px; height:${level_diff}px`;
 		this.rightline.style.display = 'none';
 		this.leftline = document.createElement("img");
 		//this.leftline.className = "linestyle";
 		this.leftline.src = "leftdiagonal.png";
 		this.leftline.style =
-			`z-index:1; position:absolute; left:0px; top:0px; width:100px; height:${level_diff}px`;
+			`z-index:-1; position:absolute; left:0px; top:0px; width:100px; height:${level_diff}px`;
 		this.leftline.style.display = 'none';
 		this.elem.appendChild(this.elemValue);
-		this.elem.appendChild(this.rightline);
+		this.elem.appendChild(this.elemSidevalue);
 		this.elem.appendChild(this.leftline);
+		this.elem.appendChild(this.rightline);
 	}
 	destroy() {
 		var el = this.elem;
-		var elside = this.elemSidevalue;
 		var cur_time = mytimeline.currentTime;
 		mytimeline.add({
 			targets: this.elem,
 			easing: 'easeOutCirc',
+			duration:10,
 			complete: function(anim) {
 				el.remove();
 			}
 		});
-		mytimeline.pause();
-		mytimeline.seek(cur_time);
-		mytimeline.play();
+		skipTo(cur_time);
 	}
 
 	moveSubtreeTo(pos) {
@@ -188,33 +208,28 @@ class Node {
 		var anim_list = [{
 			targets: el,
 			translateX: pos.x,
-			translateY: pos.y
+			translateY: pos.y,
+			complete: function(anim) {
+				node.updateZIndex();
+			}
 		}, {
 			targets: leftline,
 			width: finalwidth,
 			translateX: -finalwidth,
 			complete: function(anim) {
-				if (leftchild == null) {
-					console.log("hide leftline for ", node);
+				if (leftchild == null)
 					leftline.style.display = 'none';
-				}
-				else {
-					console.log("show leftline for ", node);
+				else
 					leftline.style.display = 'inline';
-				}
 			}
 		}, {
 			targets: rightline,
 			width: finalwidth,
 			complete: function(anim) {
-				if (rightchild == null) {
-					console.log("hide rightline for ", node);
+				if (rightchild == null)
 					rightline.style.display = 'none';
-				}
-				else {
-					console.log("show rightline for ", node);
+				else
 					rightline.style.display = 'inline';
-				}
 			}
 		}];
 		//this.pos = pos.make_copy();
@@ -267,10 +282,16 @@ class Node {
 			return 2;
 		}
 		this.moveto(add(othernode.pos, compare_offset));
+		console.log("compare ", this.val, othernode.val);
+		console.log(othernode.pos.x, othernode.pos.y, this.pos.x, this.pos.y);
 		if (this.val == othernode.val)
 			return 0;
-		if (this.val < othernode.val)
+		if (this.val < othernode.val) {
+			console.log("what? ", this.val, othernode.val);
+			console.log("less");
 			return -1;
+		}
+		console.log("more");
 		return 1;
 	}
 
@@ -313,9 +334,7 @@ class Node {
 		//this.moveto(root_pos);
 		var cur_time = mytimeline.currentTime;
 		this.moveSubtreeTo(root_pos);
-		mytimeline.pause();
-		mytimeline.seek(cur_time);
-		mytimeline.play();
+		skipTo(cur_time);
 	}
 	popLeftChild() {
 		var n = this.left;
@@ -361,15 +380,13 @@ class Node {
 			background: color,
 			duration: duration
 		});
-		mytimeline.pause();
-		mytimeline.seek(cur_time);
-		mytimeline.play();
+		skipTo(cur_time);
 	}
 	unhighlight() {
 		this.highlight(WHITE, 50);
 	}
 	throwaway() {
-		this.moveto(new Pos(0, 2*level_diff));
+		this.moveto(trash_pos);
 		var leftline = this.leftline;
 		var rightline = this.rightline;
 		mytimeline.add({
@@ -385,6 +402,7 @@ class Node {
 	//=============================================================================
 	//should be private but the #varname thing isn't working
 	moveto(pos) {
+		var finalwidth = horiz / Math.pow(2, this.getlevel() + 1);
 		var cur_time = mytimeline.currentTime;
 		mytimeline.add({
 			targets: this.elem,
@@ -393,12 +411,18 @@ class Node {
 		});
 		mytimeline.add({
 			targets: this.rightline,
-			width: horiz / Math.pow(2, this.getlevel() + 1)
+			width: finalwidth
 		}, '-=' + anime_duration);
-		mytimeline.pause();
-		mytimeline.seek(cur_time);
-		mytimeline.play();
+		mytimeline.add({
+			targets: this.leftline,
+			width: finalwidth,
+			translateX: -finalwidth,
+		}, '-=' + anime_duration);
+		skipTo(cur_time);
 		this.pos.update(pos);
+	}
+	updateZIndex() {
+		this.elem.style.zIndex = `${this.getlevel()}`;
 	}
 	// avoid using these as they call methods
 	// that should be private
@@ -419,7 +443,7 @@ class Node {
 class ValueNode extends Node {
 	constructor(val) {
 		super(val);
-		this.elem.className = "";
+		this.elem.innerHTML = "= " + val + " ?";
 	}
 }
 //end Node class defn
@@ -448,9 +472,19 @@ class Tree {
 	updatePos() {
 		this.root.setAsRoot();
 	}
+	rotateRootLeftFromButton() {
+		// do this so other trees can inherit the rotate method
+		// but can prevent users from manually rotating
+		this.rotateRootLeft();
+	}
+	rotateRootRightFromButton() {
+		// do this so other trees can inherit the rotate method
+		// but can prevent users from manually rotating
+		this.rotateRootRight();
+	}
 	rotateRootLeft() {
 		if (this.root.right == null) {
-			console.log("cannot rotateRootLeft, rightnode is null");
+			this.showMessage("cannot rotateRootLeft, rightnode is null");
 			// although nothing changed, need to do this
 			// otherwise the animations would refresh...
 			this.updatePos();
@@ -460,7 +494,7 @@ class Tree {
 	}
 	rotateRootRight() {
 		if (this.root.left == null) {
-			console.log("cannot rotateRootRight, leftnode is null");
+			this.showMessage("cannot rotateRootRight, leftnode is null");
 			this.updatePos();
 			return;
 		}
@@ -526,6 +560,28 @@ class Tree {
 			}
 		}
 	}
+
+	showMessage(message) {
+		console.log(message);
+		var cur_time = mytimeline.currentTime;
+		var errorbox = document.createElement("div");
+		errorbox.style = errorbox_style;
+		errorbox.innerHTML = message;
+		mytimeline.add({
+			targets: outdiv,
+			duration: 600,
+			begin: function(anim) {
+				//errorbox.innerHTML = message;
+				outdiv.appendChild(errorbox);
+			},
+			complete: function(anim) {
+				errorbox.innerHTML = "";
+				errorbox.remove();
+				//outdiv.removeChild(errorbox);
+			}
+		});
+		skipTo(cur_time);
+	}
 }
 // end Tree class defn
 //=============================================================================
@@ -535,7 +591,7 @@ class BST extends Tree {
 	constructor() {
 		super();
 	}
-	insert(val, rt = this.root){
+	insert(val) {
 		var newnode = new Node(val);
 		if (this.isEmpty()) {
 			//this.root = newnode;
@@ -543,31 +599,59 @@ class BST extends Tree {
 			this.setNodeAsRoot(newnode);
 			return;
 		}
-		this.insert_attempt(newnode, rt);
-	}
-	insert_attempt(newnode, cur) {
-		var comp = newnode.compareNode(cur);
-		if (comp <= 0) {
-			if (cur.left == null) {
-				//cur.setLeftChild(newnode);
-				newnode.setAsLeftChildOf(cur, true);
-				this.updatePos();
+		var cur = this.root;
+		while (true) {
+			var comp = newnode.compareNode(cur);
+			console.log(newnode.val, cur.val, comp);
+			if (comp <= 0) {
+				if (cur.left == null) {
+					newnode.setAsLeftChildOf(cur, true);
+					break;
+				}
+				else
+					cur = cur.left;
 			}
-			else
-				this.insert_attempt(newnode,cur.left);
-		}
-		else {
-			if (cur.right == null) {
-				newnode.setAsRightChildOf(cur, true);
-				this.updatePos();
+			else {
+				if (cur.right == null) {
+					newnode.setAsRightChildOf(cur, true);
+					break;
+				}
+				else
+					cur = cur.right;
 			}
-			else
-				this.insert_attempt(newnode,cur.right);
+			this.updatePos();
 		}
-
+		this.updatePos();
 	}
 	// returns [node, parent]
 	// parent is null if node==root
+	searchVal(val) {
+		if (this.isEmpty()) {
+			return [null, null];
+		}
+		var cur = this.root;
+		var prev = null;
+		var visNode = new ValueNode(val);
+		while (cur != null) {
+			var comp = visNode.compareNode(cur);
+			if (comp == 0) {
+				cur.highlight(GREEN, highlight_duration);
+				cur.unhighlight();
+				visNode.destroy();
+				return [cur, prev];
+			}
+			cur.highlight(BLUE);
+			cur.unhighlight();
+			prev = cur;
+			if (comp < 0)
+				cur = cur.left;
+			else
+				cur = cur.right;
+		}
+		visNode.destroy();
+		return [cur, prev];
+	}
+	/*
 	searchVal(val, node=this.root, prev=null, visNode=null) {
 		if (visNode == null) {
 			visNode = new ValueNode(val);
@@ -578,7 +662,7 @@ class BST extends Tree {
 			return [null, null];
 		}
 		if (node.val == val) {
-			node.highlight(GREEN, 500);
+			node.highlight(GREEN, highlight_duration);
 			node.unhighlight();
 			visNode.destroy();
 			return [node, prev];
@@ -590,15 +674,15 @@ class BST extends Tree {
 		else
 			return this.searchVal(val, node.right, node, visNode);
 	}
+	*/
 	popVal(val) {
 		var node_and_parent = this.searchVal(val);
 		var node = node_and_parent[0];
 		var prev = node_and_parent[1];
 		if (node == null) {
-			console.log("can't pop; value ", val, " not found");
+			console.log("here?", val);
+			this.showMessage(`value ${val} not found`);
 			return null;
-		}
-		if (prev == null) {
 		}
 		if (node.left == null) {
 			if (node.right == null) {
@@ -789,7 +873,7 @@ class AVLTree extends BST {
 		// it is guaranteed that the rest of the tree is balanced
 		//=============================
 		// insert part:
-		var newnode = new Node(val);
+		var newnode = new Node(val,0);
 		if (this.isEmpty()) {
 			this.setNodeAsRoot(newnode);
 			return;
@@ -882,7 +966,7 @@ class AVLTree extends BST {
 				else {
 					// rotate/zigzag to absord height, end loop
 					if (x == p.left) {
-						// x = p.left = g.left.left
+						console.log("x = p.left = g.left.left");
 						p.height_diff = g.height_diff = 0;
 						// rotate right at g, need parent of g
 						var gg = null;
@@ -892,13 +976,13 @@ class AVLTree extends BST {
 						break;
 					}
 					else {
-						console.log("should be here");
-						// x = p.right = g.left.right
+						console.log("x = p.right = g.left.right");
+						var xIsLeaf = x.isLeaf();
 						p.right = x.left;
 						x.left = p;
 						g.left = x.right;
 						x.right = g;
-						if (x.left == null && x.right == null) {
+						if (xIsLeaf) {
 							// x is leaf => A,B,C,D are empty
 							x.height_diff = p.height_diff = g.height_diff = 0;
 						}
@@ -949,7 +1033,7 @@ class AVLTree extends BST {
 				else {
 					// rotate/zigzag to absord height, end loop
 					if (x == p.right) {
-						// x = p.right = g.right.right
+						console.log("x = p.right = g.right.right");
 						p.height_diff = g.height_diff = 0;
 						// rotate right at g, need parent of g
 						var gg = null;
@@ -959,13 +1043,13 @@ class AVLTree extends BST {
 						break;
 					}
 					else {
-						console.log("should be here");
-						// x = p.left = g.right.left
+						console.log("x = p.left = g.right.left");
+						var xIsLeaf = x.isLeaf();
 						p.left= x.right;
 						x.right = p;
 						g.right = x.left;
 						x.left = g;
-						if (x.left == null && x.right == null) {
+						if (xIsLeaf) {
 							// x is leaf => A,B,C,D are empty
 							x.height_diff = p.height_diff = g.height_diff = 0;
 						}
@@ -1015,7 +1099,7 @@ class AVLTree extends BST {
 		// search for node
 		while (true) {
 			if (node == null) {
-				console.log("val not found");
+				this.showMessage(`value ${val} not found`);
 				return;
 			}
 			nodepath.push(node);
@@ -1047,7 +1131,7 @@ class AVLTree extends BST {
 			p = nodepath[nodepath.length-1];
 		if (node.isLeaf()) {
 			// handle trivial node==root case
-			if (node == this.root) {
+			if (node == this.root) { // = == null
 				this.root = null;
 				node.throwaway();
 				return;
@@ -1063,7 +1147,10 @@ class AVLTree extends BST {
 			node.throwaway();
 		}
 		else if (node.left == null) {
-			if (node == p.right) {
+			if (p == null) {
+				this.root = node.right;
+			}
+			else if (node == p.right) {
 				p.right = node.right;
 				p.height_diff--;
 			}
@@ -1074,8 +1161,11 @@ class AVLTree extends BST {
 			node.throwaway();
 		}
 		else if (node.right == null) {
-			if (node == p.right) {
-				p.right = node.left;
+			if (p == null) {
+				this.root = node.left;
+			}
+			else if (node == p.right) {
+				p.right = node.right;
 				p.height_diff--;
 			}
 			else {
@@ -1087,7 +1177,6 @@ class AVLTree extends BST {
 		else {
 			// find rightmost node of leftsubtree of node
 			// extend nodepath
-			console.log("here");
 			nodepath.push(node);
 			var node_ind = nodepath.length - 1; // node has to be swapped in later
 			var n = node.left;
@@ -1164,7 +1253,6 @@ class AVLTree extends BST {
 					var p = g.right;
 					var x = null;
 					if (p.height_diff >= 0) {
-						console.log("here");
 						var height_dec = p.height_diff; // how this rotate affects height
 						x = p.right;
 						//rotate left at g
@@ -1191,7 +1279,7 @@ class AVLTree extends BST {
 						// p.height_diff < 0
 						// do zigzag
 						x = p.left;
-						console.log(g.val, p.val, x.val);
+						console.log("g,p,x:", g.val, p.val, x.val);
 						g.right = x.left;
 						p.left = x.right;
 						x.left = g;
@@ -1219,7 +1307,6 @@ class AVLTree extends BST {
 					var p = g.left;
 					var x = null;
 					if (p.height_diff <= 0) {
-						console.log("here");
 						var height_dec = -p.height_diff; // how this rotate affects height
 						x = p.left;
 						//rotate right at g
@@ -1246,7 +1333,7 @@ class AVLTree extends BST {
 						// p.height_diff > 0
 						// do zigzag
 						x = p.right;
-						console.log(g.val, p.val, x.val);
+						console.log("g,p,x: ", g.val, p.val, x.val);
 						g.left = x.right;
 						p.right = x.left;
 						x.right = g;
@@ -1287,6 +1374,12 @@ class AVLTree extends BST {
 		}
 		return height;
 	}
+	rotateRootLeftFromButton() {
+		this.showMessage("AVL Tree cannot rotate manually");
+	}
+	rotateRootRightFromButton() {
+		this.showMessage("AVL Tree cannot rotate manually");
+	}
 }
 
 // TODO: add animation to operations that are not allowed,
@@ -1301,20 +1394,9 @@ function rand() {
 	return Math.floor(Math.random() * 10);
 }
 
-//ls = [8,4,12,2,3,5,7,0,1,9,6];
-//bst = new AVLTree();
+//mytree = new AVLTree();
+//ls = [16,15,15.5,14,13,12,11,10,9,8,7,6,5,4,3,2,1];
 //for (var i = 0; i < ls.length; i++) {
-	////ls[i] = rand();
-	//bst.insertBalance(ls[i]);
+//	mytree.insert(ls[i]);
 //}
-//ls = [16,18,19,17,14,15];
-//ls = [16,15,15.5];//14,13,12,11,10,9,8,7,6,5,4,3,2,1];
-//ls = [5,2,10,1,4,8,12,3,7,9,11,6];
-bst = new BST();
-
-for (var i = 0; i < 2; i++) {
-	bst.insert(i);
-}
-//mytimeline.pause();
-//mytimeline.seek(anime_duration * 90 - 100);
-//mytimeline.play();
+//skipTo(anime_durationi * 90 - 100);
