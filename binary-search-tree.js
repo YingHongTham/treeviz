@@ -26,13 +26,15 @@ globalvar = 0
 
 //==============================================================================
 // initialize
-var start_pos = new Pos(0,0);
-var root_pos = new Pos(screen.width/2, 0);
+var start_pos = new Pos(0,50);
+var root_pos = new Pos(screen.width/2, 50);
 var compare_offset = new Pos(0, 50);
+let node_radius = 20;
 let level_diff = 80.0;
 let horiz = screen.width * 1.0 / 3;
 let anime_duration = 300;
 let RED = 'rgb(255,0,0)';
+let YELLOW = 'rgb(128,128,0)';
 let GREEN = 'rgb(0,255,0)';
 let BLUE = 'rgb(0,0,255)';
 let WHITE = 'rgb(255,255,255)';
@@ -122,20 +124,41 @@ class Node {
 		this.height_diff = 0; // for AVLTrees
 		let p = document.getElementById("outdiv");
 		this.elem = document.createElement("div");
-		this.elem.className = "treenode";
-		this.elem.innerHTML = val;
+		this.elem.className = "divstyle";
+		//this.elem.innerHTML = val;
 		this.pos = start_pos.make_copy();
-		//start_pos.y += 50;
 		this.elem.style =
-			`position:absolute; left:${this.pos.x}px; top:${this.pos.y}px;`;
+			`z-index:2; position:absolute; left:${this.pos.x}px; top:${this.pos.y}px;`;
 		p.append(this.elem);
+		this.elemValue = document.createElement("div");
+		this.elemValue.className = "treenode";
+		this.elemValue.innerHTML = val;
+		this.elemValue.style =
+			`z-index:2; position:absolute; left:-${node_radius}px; top:-${node_radius}px;`;
 		this.elemSidevalue = document.createElement("div");
 		this.elemSidevalue.innerHTML = this.height_diff;
 		this.elemSidevalue.style = 'position:absolute';
 		this.elem.appendChild(this.elemSidevalue);
+		// diagonal lines
+		this.rightline = document.createElement("img");
+		//this.rightline.className = "linestyle";
+		this.rightline.src = "rightdiagonal.png";
+		this.rightline.style =
+			`z-index:1; position:absolute; left:0px; top:0px; width:100px; height:${level_diff}px`;
+		this.rightline.style.display = 'none';
+		this.leftline = document.createElement("img");
+		//this.leftline.className = "linestyle";
+		this.leftline.src = "leftdiagonal.png";
+		this.leftline.style =
+			`z-index:1; position:absolute; left:0px; top:0px; width:100px; height:${level_diff}px`;
+		this.leftline.style.display = 'none';
+		this.elem.appendChild(this.elemValue);
+		this.elem.appendChild(this.rightline);
+		this.elem.appendChild(this.leftline);
 	}
 	destroy() {
 		var el = this.elem;
+		var elside = this.elemSidevalue;
 		var cur_time = mytimeline.currentTime;
 		mytimeline.add({
 			targets: this.elem,
@@ -155,10 +178,44 @@ class Node {
 		add_simultaneous(anim_list);
 	}
 	getSubtreeAnimList(pos) {
+		var node = this;
+		var el = this.elem;
+		var leftline = this.leftline;
+		var rightline = this.rightline;
+		var leftchild = this.left;
+		var rightchild = this.right;
+		var finalwidth = horiz / Math.pow(2, this.getlevel() + 1);
 		var anim_list = [{
-			targets: this.elem,
+			targets: el,
 			translateX: pos.x,
 			translateY: pos.y
+		}, {
+			targets: leftline,
+			width: finalwidth,
+			translateX: -finalwidth,
+			complete: function(anim) {
+				if (leftchild == null) {
+					console.log("hide leftline for ", node);
+					leftline.style.display = 'none';
+				}
+				else {
+					console.log("show leftline for ", node);
+					leftline.style.display = 'inline';
+				}
+			}
+		}, {
+			targets: rightline,
+			width: finalwidth,
+			complete: function(anim) {
+				if (rightchild == null) {
+					console.log("hide rightline for ", node);
+					rightline.style.display = 'none';
+				}
+				else {
+					console.log("show rightline for ", node);
+					rightline.style.display = 'inline';
+				}
+			}
 		}];
 		//this.pos = pos.make_copy();
 		if (this.left != null)
@@ -270,6 +327,9 @@ class Node {
 		this.left = null;
 		return n;
 	}
+	isLeaf() {
+		return this.left == null && this.right == null;
+	}
 	//=============================================================================
 	//implement in tree?
 	rotateLeft() {
@@ -297,7 +357,7 @@ class Node {
 	highlight(color, duration=anime_duration) {
 		var cur_time = mytimeline.currentTime;
 		mytimeline.add({
-			targets: this.elem,
+			targets: this.elemValue,
 			background: color,
 			duration: duration
 		});
@@ -310,6 +370,17 @@ class Node {
 	}
 	throwaway() {
 		this.moveto(new Pos(0, 2*level_diff));
+		var leftline = this.leftline;
+		var rightline = this.rightline;
+		mytimeline.add({
+			targets: leftline, rightline,
+			complete: function(anim) {
+				leftline.style.display = 'none';
+				rightline.style.display = 'none';
+				leftline.remove();
+				rightline.remove();
+			}
+		});
 	}
 	//=============================================================================
 	//should be private but the #varname thing isn't working
@@ -320,6 +391,10 @@ class Node {
 			translateX: pos.x,
 			translateY: pos.y
 		});
+		mytimeline.add({
+			targets: this.rightline,
+			width: horiz / Math.pow(2, this.getlevel() + 1)
+		}, '-=' + anime_duration);
 		mytimeline.pause();
 		mytimeline.seek(cur_time);
 		mytimeline.play();
@@ -354,6 +429,13 @@ class ValueNode extends Node {
 class Tree {
 	constructor() {
 		this.root = null;
+	}
+	destroy(node=this.root) {
+		if (node == null)
+			return;
+		node.destroy();
+		this.destroy(node.left);
+		this.destroy(node.right);
 	}
 	isEmpty() {
 		return this.root == null;
@@ -560,6 +642,7 @@ class BST extends Tree {
 				return node;
 			}
 		}
+		updatePos();
 	}
 }
 // end BST class defn
@@ -698,6 +781,14 @@ class AVLTree extends BST {
 		this.root.updateSidevalue();
 	}
 	insert(val) {
+		// idea is simple, but has many cases to consider
+		// first insert as usual like BST
+		// then go along nodes from inserted node to root,
+		// check if needs rebalancing and update height_diff
+		// once a rebalancing by rotate/zigzag has been performed,
+		// it is guaranteed that the rest of the tree is balanced
+		//=============================
+		// insert part:
 		var newnode = new Node(val);
 		if (this.isEmpty()) {
 			this.setNodeAsRoot(newnode);
@@ -729,11 +820,15 @@ class AVLTree extends BST {
 				}
 			}
 		}
+		//=============================
+		// some visualization
 		for (var i = 0; i < nodepath.length; i++) {
 			nodepath[i].highlight(BLUE);
 			nodepath[i].unhighlight();
 		}
+		//=============================
 		// the rebalancing part
+		// newnode being this.root has been handled at beginning
 		if (nodepath.length <= 1) {
 			// newnode is child of root
 			if (newnode == this.root.left)
@@ -761,6 +856,10 @@ class AVLTree extends BST {
 		var g = p;
 		p = x;
 		while (nodepath.length) {
+			// x child of p child of g
+			// x and p are guaranteed to be balanced
+			// if g found to be balanced, update its height_diff
+			// if g is unbalanced, then balance and done
 			x = p;
 			p = g;
 			g = nodepath.pop();
@@ -836,13 +935,357 @@ class AVLTree extends BST {
 					}
 				}
 			}
-			else {
-				g.height_diff = 1;
-				//TODO above is hack so I can test the x = p.right = g.left.right case
+			else { // p = g.right
+				console.log(g.val);
+				if (g.height_diff == -1) {
+					// g absorbs height increase under p
+					g.height_diff = 0;
+					break;
+				}
+				else if (g.height_diff == 0) {
+					// g's height increases from p, continue up the tree
+					g.height_diff = 1;
+				}
+				else {
+					// rotate/zigzag to absord height, end loop
+					if (x == p.right) {
+						// x = p.right = g.right.right
+						p.height_diff = g.height_diff = 0;
+						// rotate right at g, need parent of g
+						var gg = null;
+						if (g != this.root)
+							gg = nodepath.pop();
+						this.rotateNodeLeft(g, gg);
+						break;
+					}
+					else {
+						console.log("should be here");
+						// x = p.left = g.right.left
+						p.left= x.right;
+						x.right = p;
+						g.right = x.left;
+						x.left = g;
+						if (x.left == null && x.right == null) {
+							// x is leaf => A,B,C,D are empty
+							x.height_diff = p.height_diff = g.height_diff = 0;
+						}
+						else {
+							// x not leaf
+							// A = B+1 = C+1 = D
+							if (x.height_diff == 1) {
+								p.height_diff = 0;
+								g.height_diff = -1;
+							}
+							else if (x.height_diff == -1) {
+								p.height_diff = 1;
+								g.height_diff = 0;
+							}
+							else {
+								console.log("x.height_diff should not be 0!");
+							}
+							x.height_diff = 0;
+						}
+						if (g == this.root)
+							this.root = x;
+						else {
+							var gg = nodepath.pop();
+							if (g == gg.left)
+								gg.left = x;
+							else
+								gg.right = x;
+						}
+						//if (p.left != null)
+						//	console.log("BAD: p.left should be null");
+						//if (g.right != null)
+						//	console.log("BAD: g.right should be null");
+						break;
+					}
+				}
 			}
 			this.updatePosAVL();
 		}
 		this.updatePosAVL();
+	}
+	
+	popVal(val) {
+		// similar to insert, delete as usual,
+		// but go back up the tree and update height_diff or rebalance
+		var node = this.root;
+		var nodepath = [];
+		// search for node
+		while (true) {
+			if (node == null) {
+				console.log("val not found");
+				return;
+			}
+			nodepath.push(node);
+			if (val == node.val) {
+				node.highlight(GREEN);
+				node.unhighlight();
+				break;
+			}
+			node.highlight(BLUE);
+			node.unhighlight();
+			if (val < node.val) {
+				node = node.left
+			}
+			else {
+				node = node.right;
+			}
+		}
+		if (node != nodepath.pop()) {
+			console.log("BAD: current node should be the last node on nodepath");
+			return;
+		}
+		// removing the node
+		// note nodepath may have to include more nodes
+		// before passing to the rebalancing stage,
+		// the height_diff of nodes in nodepath should all be as before
+		// except the last node is updated to the correct value
+		var p = null;
+		if (nodepath.length > 0)
+			p = nodepath[nodepath.length-1];
+		if (node.isLeaf()) {
+			// handle trivial node==root case
+			if (node == this.root) {
+				this.root = null;
+				node.throwaway();
+				return;
+			}
+			if (node == p.left) {
+				p.left = null;
+				p.height_diff++;
+			}
+			else {
+				p.right = null;
+				p.height_diff--;
+			}
+			node.throwaway();
+		}
+		else if (node.left == null) {
+			if (node == p.right) {
+				p.right = node.right;
+				p.height_diff--;
+			}
+			else {
+				p.left = node.right;
+				p.height_diff++;
+			}
+			node.throwaway();
+		}
+		else if (node.right == null) {
+			if (node == p.right) {
+				p.right = node.left;
+				p.height_diff--;
+			}
+			else {
+				p.left = node.left;
+				p.height_diff++;
+			}
+			node.throwaway();
+		}
+		else {
+			// find rightmost node of leftsubtree of node
+			// extend nodepath
+			console.log("here");
+			nodepath.push(node);
+			var node_ind = nodepath.length - 1; // node has to be swapped in later
+			var n = node.left;
+			var np = null;
+			while (n.right != null) {
+				nodepath.push(n);
+				np = n;
+				n = n.right;
+			}
+			for (var i = 0; i < nodepath.length; i++) {
+				console.log("nodepath", nodepath[i].val);
+				nodepath[i].highlight(YELLOW);
+				nodepath[i].unhighlight();
+			}
+			console.log("n.val", n.val);
+			// now n is rightmost node under n
+			// nodepath is extended to np (if np is null, it's extended to just node)
+			if (np == null) {
+				// node.left has no right child
+				n.right = node.right;
+				n.height_diff = node.height_diff + 1; // n will replace node and will be last node of nodepath
+			}
+			else {
+				np.right = n.left;
+				np.height_diff--; //np will be the last node of nodepath
+				n.left = node.left;
+				n.right = node.right;
+				n.height_diff = node.height_diff;
+			}
+			// update p child to n, but don't update p.height_diff,
+			// as it's not the last node in nodepath
+			if (node == this.root) // p==null
+				this.root = n;
+			else if (node == p.right)
+				p.right = n;
+			else
+				p.left = n;
+			nodepath[node_ind] = n;
+			node.throwaway();
+		}
+		this.updatePosAVL();
+		//for (var i = 0; i < nodepath.length; i++) {
+			//nodepath[i].highlight(YELLOW);
+			//nodepath[i].unhighlight();
+		//}
+		// rebalancing
+		// if the last node in nodepath has height_diff is 0,
+		//	it means the height of this node has decreased, go to parent
+		// if height_diff is +1 or -1, norebalancing necessary
+		// if height_diff is +2 or -2, perform rotate/zigzag, go to parent
+		// (note for insert, after doing rotate/zigzag to rebalance,
+		//	parent's height_diff unaffected as now the subtree is same height as before
+		//	but for remove, subtree after rebalancing may reduce height by 1)
+		while (nodepath.length > 0) {
+			var curnode = nodepath.pop();
+			var par = null;
+			if (nodepath.length > 0)
+				par = nodepath[nodepath.length-1];
+			if (Math.abs(curnode.height_diff) == 1) {
+				break;
+			}
+			else if (curnode.height_diff == 0) {
+				if (par == null)
+					break;
+				else if (curnode == par.left)
+					par.height_diff++;
+				else
+					par.height_diff--;
+			}
+			else {
+				console.log("curnode.val:", curnode.val, curnode.height_diff);
+				if (curnode.height_diff == 2) {
+					var g = curnode;
+					var p = g.right;
+					var x = null;
+					if (p.height_diff >= 0) {
+						console.log("here");
+						var height_dec = p.height_diff; // how this rotate affects height
+						x = p.right;
+						//rotate left at g
+						g.right = p.left;
+						g.height_diff = 1 - height_dec;
+						p.left = g;
+						p.height_diff = height_dec - 1;
+						if (par == null) {
+							this.root = p;
+							break;
+						}
+						else if (curnode == par.left) {
+							par.left = p;
+							par.height_diff += height_dec;
+						}
+						else {
+							par.right = p;
+							par.height_diff -= height_dec;
+						}
+						if (height_dec == 0)
+							break;
+					}
+					else {
+						// p.height_diff < 0
+						// do zigzag
+						x = p.left;
+						console.log(g.val, p.val, x.val);
+						g.right = x.left;
+						p.left = x.right;
+						x.left = g;
+						x.right = p;
+						g.height_diff = (x.height_diff <= 0) ? 0 : -1;
+						p.height_diff = (x.height_diff >= 0) ? 0 : 1;
+						x.height_diff = 0;
+						if (par == null) {
+							this.root = x;
+							break;
+						}
+						else if (curnode == par.left) {
+							par.left = x;
+							par.height_diff++;
+						}
+						else {
+							par.right = x;
+							par.height_diff--;
+						}
+					}
+				}
+				else {
+					// curnode.height_diff == -2
+					var g = curnode;
+					var p = g.left;
+					var x = null;
+					if (p.height_diff <= 0) {
+						console.log("here");
+						var height_dec = -p.height_diff; // how this rotate affects height
+						x = p.left;
+						//rotate right at g
+						g.left = p.right;
+						g.height_diff = height_dec - 1;
+						p.right = g;
+						p.height_diff = 1 - height_dec;
+						if (par == null) {
+							this.root = p;
+							break;
+						}
+						else if (curnode == par.left) {
+							par.left = p;
+							par.height_diff += height_dec;
+						}
+						else {
+							par.right = p;
+							par.height_diff -= height_dec;
+						}
+						if (height_dec == 0)
+							break;
+					}
+					else {
+						// p.height_diff > 0
+						// do zigzag
+						x = p.right;
+						console.log(g.val, p.val, x.val);
+						g.left = x.right;
+						p.right = x.left;
+						x.right = g;
+						x.left = p;
+						g.height_diff = (x.height_diff >= 0) ? 0 : 1;
+						p.height_diff = (x.height_diff <= 0) ? 0 : -1;
+						x.height_diff = 0;
+						if (par == null) {
+							this.root = x;
+							break;
+						}
+						else if (curnode == par.left) {
+							par.left = x;
+							par.height_diff++;
+						}
+						else {
+							par.right = x;
+							par.height_diff--;
+						}
+					}
+				}
+			}
+			this.updatePosAVL();
+		}
+		this.updatePosAVL();
+	}
+
+	verify_height_diff(node = this.root) {
+		if (node == null)
+			return 0;
+		var height_left = this.verify_height_diff(node.left);
+		var height_right = this.verify_height_diff(node.right);
+		var height = Math.max(height_left, height_right) + 1;
+		if (node.height_diff != height_right - height_left) {
+			console.log("Bad node, height_diff wrong: ", node);
+			node.highlight(RED);
+			node.unhighlight();
+		}
+		return height;
 	}
 }
 
@@ -864,12 +1307,14 @@ function rand() {
 	////ls[i] = rand();
 	//bst.insertBalance(ls[i]);
 //}
-ls = [16, 13,17,12,15,14];
+//ls = [16,18,19,17,14,15];
 //ls = [16,15,15.5];//14,13,12,11,10,9,8,7,6,5,4,3,2,1];
-bst = new AVLTree();
-for (var i = 0; i < ls.length; i++) {
-	bst.insert(ls[i]);
+//ls = [5,2,10,1,4,8,12,3,7,9,11,6];
+bst = new BST();
+
+for (var i = 0; i < 2; i++) {
+	bst.insert(i);
 }
-mytimeline.pause();
-mytimeline.seek(anime_duration * 25 - 100);
-mytimeline.play();
+//mytimeline.pause();
+//mytimeline.seek(anime_duration * 90 - 100);
+//mytimeline.play();
