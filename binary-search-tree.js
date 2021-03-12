@@ -1,4 +1,20 @@
 //==============================================================================
+// dummy timeline
+// used to suppress the anime.js stuff
+// AVLTree runs very slowly,
+// but after using dummy instead of anime.timeline,
+// it's not slow...
+class dummy {
+	constructor(a=null) {
+		this.currentTime = 0;
+	}
+	play() {}
+	seek(t=0) {}
+	pause() {}
+	add(a=null,b=null) {}
+}
+
+//==============================================================================
 // some useful stuff
 class Pos {
 	constructor(x, y) {
@@ -105,6 +121,7 @@ button_newAVL.onclick = function() {
 // mytimeline.add adds to queue, executes one after another
 var mytimeline = newTimeline();
 function newTimeline() {
+	//return new dummy({
 	return anime.timeline({
 		// these settings apply to all animations added to mytimeline
 		easing: 'easeInOutExpo',
