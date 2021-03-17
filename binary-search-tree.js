@@ -1,4 +1,7 @@
 //==============================================================================
+// TODO: put the definitions of Node and Tree and stuff in a separate js file
+//
+//==============================================================================
 // dummy timeline
 // used to suppress the anime.js stuff
 // AVLTree runs very slowly,
