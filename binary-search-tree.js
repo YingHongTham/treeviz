@@ -1,71 +1,21 @@
 //==============================================================================
-// TODO: put the definitions of Node and Tree and stuff in a separate js file
-//
-//==============================================================================
-// dummy timeline
-// used to suppress the anime.js stuff
-// AVLTree runs very slowly,
-// but after using dummy instead of anime.timeline,
-// it's not slow...
-class dummy {
-	constructor(a=null) {
-		this.currentTime = 0;
-	}
-	play() {}
-	seek(t=0) {}
-	pause() {}
-	add(a=null,b=null) {}
-}
-
-//==============================================================================
-// some useful stuff
-class Pos {
-	constructor(x, y) {
-		this.x = x;
-		this.y = y;
-	}
-	make_copy() {
-		return new Pos(this.x, this.y);
-	}
-	update(a) {
-		this.x = a.x;
-		this.y = a.y;
-	}
-	add(a) {
-		this.x += a.x;
-		this.y += a.y;
-	}
-}
-
-// add Pos's
-function add(a,b) {
-	return new Pos(a.x + b.x, a.y + b.y);
-}
-globalvar = 0
-
-//==============================================================================
 // initialize
-let level_diff = 80.0;
-let start_pos = new Pos(30,50);
-let	root_pos = new Pos(screen.width/2, 50);
-let trash_pos = new Pos(30, 2*level_diff);
-let compare_offset = new Pos(40, 0);
-let outdiv = document.getElementById("outdiv");
-//let errorbox = document.createElement("div");
-//errorbox.style = `position:absolute; left:${screen.width * 1.0 / 4}px; top:${root_pos.y + 20}px;
-//	width:${screen.width * 1.0 / 8}px`;
-let errorbox_style = `position:absolute; left:${screen.width * 1.0 / 4}px; top:${root_pos.y + 20}px;
-	width:${screen.width * 1.0 / 8}px`;
-//outdiv.appendChild(errorbox);
-let node_radius = 20;
-let horiz = screen.width * 1.0 / 3;
-let anime_duration = 300;
-let highlight_duration = 500;
-let RED = 'rgb(255,0,0)';
-let YELLOW = 'rgb(128,128,0)';
-let GREEN = 'rgb(0,255,0)';
-let BLUE = 'rgb(0,0,255)';
-let WHITE = 'rgb(255,255,255)';
+
+set_level_diff(80.0);
+set_start_pos(30,50);
+set_root_pos(screen.width/2, 50);
+set_trash_pos(30, 2*level_diff);
+set_compare_offset(40, 0);
+set_outdiv(document.getElementById("outdiv"));
+set_node_radius(20);
+set_horiz(screen.width * 1.0 / 3);
+set_anime_duration(300);
+set_highlight_duration(500);
+//const RED = 'rgb(255,0,0)';
+//const YELLOW = 'rgb(128,128,0)';
+//const GREEN = 'rgb(0,255,0)';
+//const BLUE = 'rgb(0,0,255)';
+//const WHITE = 'rgb(255,255,255)';
 var mytree = null;
 
 // buttons
@@ -85,28 +35,34 @@ body.addEventListener('keydown', (event) => {
 // for some reaons, need to seek current time
 // and manually resume to that time
 button_rotate_left.onclick = function() {
+	mytimeline = newTimeline();
 	mytree.rotateRootLeftFromButton();
 };
 button_rotate_right.onclick = function() {
+	mytimeline = newTimeline();
 	mytree.rotateRootRightFromButton();
 };
 button_insert.onclick = function() {
+	mytimeline = newTimeline();
 	var x = document.getElementById("insert_value");
 	mytree.insert(Number(x.value));
 };
 button_search.onclick = function() {
+	mytimeline = newTimeline();
 	var x = document.getElementById("search_value");
 	var cur_time = mytimeline.currentTime;
 	mytree.searchVal(Number(x.value));
 	skipTo(cur_time);
 }
 button_delete.onclick = function() {
+	mytimeline = newTimeline();
 	var x = document.getElementById("delete_value");
 	var cur_time = mytimeline.currentTime;
 	mytree.popVal(x.value);
 	skipTo(cur_time);
 }
 button_newBST.onclick = function() {
+	mytimeline = newTimeline();
 	if (mytree != null)
 		mytree.destroy();
 	//mytimeline = newTimeline();
@@ -144,6 +100,7 @@ function add_simultaneous(anim_list) {
 		return;
 	var cur_time = mytimeline.currentTime;
 	mytimeline.add(anim_list[0]);
+	mytimeline.pause();
 	for (var i = 1; i < anim_list.length; i++) {
 		mytimeline.add(anim_list[i], '-=' + anime_duration);
 	}
@@ -201,6 +158,7 @@ class Node {
 	destroy() {
 		var el = this.elem;
 		var cur_time = mytimeline.currentTime;
+		mytimeline.pause();
 		mytimeline.add({
 			targets: this.elem,
 			easing: 'easeOutCirc',
@@ -354,7 +312,7 @@ class Node {
 		//this.moveto(root_pos);
 		var cur_time = mytimeline.currentTime;
 		this.moveSubtreeTo(root_pos);
-		skipTo(cur_time);
+		//skipTo(cur_time);
 	}
 	popLeftChild() {
 		var n = this.left;
@@ -395,6 +353,7 @@ class Node {
 	}
 	highlight(color, duration=anime_duration) {
 		var cur_time = mytimeline.currentTime;
+		mytimeline.pause();
 		mytimeline.add({
 			targets: this.elemValue,
 			background: color,
@@ -424,6 +383,7 @@ class Node {
 	moveto(pos) {
 		var finalwidth = horiz / Math.pow(2, this.getlevel() + 1);
 		var cur_time = mytimeline.currentTime;
+		mytimeline.pause();
 		mytimeline.add({
 			targets: this.elem,
 			translateX: pos.x,
@@ -587,6 +547,7 @@ class Tree {
 		var errorbox = document.createElement("div");
 		errorbox.style = errorbox_style;
 		errorbox.innerHTML = message;
+		mytimeline.pause();
 		mytimeline.add({
 			targets: outdiv,
 			duration: 600,
@@ -1415,8 +1376,9 @@ function rand() {
 }
 
 //mytree = new AVLTree();
-//ls = [16,15,15.5,14,13,12,11,10,9,8,7,6,5,4,3,2,1];
+//ls = [16,15,15.5,14];//,13,12,11,10,9,8,7,6,5,4,3,2,1];
 //for (var i = 0; i < ls.length; i++) {
 //	mytree.insert(ls[i]);
+//	mytimeline = newTimeline();
 //}
 //skipTo(anime_durationi * 90 - 100);
