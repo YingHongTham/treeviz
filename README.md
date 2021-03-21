@@ -46,7 +46,36 @@ tree.updatePos();
 
 Of course, the point is to learn to implement various binary search trees,
 so the user should extend Tree().
-(Here I have implemented a simple binary search tree, and a AVL Tree.
+(As a demo, I have implemented a simple binary search tree, and a AVL Tree.
 Probably would implement red-black trees some day.)
 
-TODO: my code is still a mess! Make it more library-like.
+nodetree.js implements two classes, Node and Tree.
+Here are the main ways to interact with the objects:
+For a node n = new Node(val);
+- n.left, n.right are its children,
+- n.val is the main value stored (currently only real numbers supported)
+- n.height_diff = height of right subtree - height of left subtree
+	(but it is only shown if n created with second variable, n = new Node(val,0);)
+- n.compareNode(othernode) moves n near to othernode,
+	and returns -1, 0, 1 depending on if n.val is less, equal, more than othernode.val
+- n.highlight(color,duration) changes color for duration (in miliseconds)
+	duration is optional, defaults to anime_duration
+- n.setAsLeftChildOf(othernode) makes n the left child of othernode,
+	n.setAsLeftChildOf(othernode,true) animates the movement of n to its new position
+	(similar for setAsRightChildOf)
+	TODO probably best to simply call updatePos after setting left/right child abstractly
+- n.destroy() for cleaning up the HTML stuff
+For a tree t = new Tree();
+- t.root is the root node,
+- t.updatePos() moves HTML nodes to new position,
+	purely based on the abstract tree structure
+- t.destroy() for recursively destroying nodes
+some useful things:
+- call finishAction_newTimeline() to force animation to end, then
+	clears away all old animation;
+	when the number of animations gets large, tends to slow down a lot..
+- t.isEmpty() checks if tree is empty
+- t.rotateNodeLeft(node, par) rotates subtree at node; par is parent of node
+	(par is irrelevant if node = t.root)
+- t.showMessage(message)
+- TODO not done

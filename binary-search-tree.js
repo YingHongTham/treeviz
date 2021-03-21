@@ -39,53 +39,49 @@ body.addEventListener('keydown', (event) => {
 			break;
 	}
 });
-// for some reaons, need to seek current time
-// and manually resume to that time
 button_rotate_left.onclick = function() {
-	mytimeline = newTimeline();
+	finishAction_newTimeline();
 	mytree.rotateRootLeftFromButton();
 };
 button_rotate_right.onclick = function() {
-	mytimeline = newTimeline();
+	finishAction_newTimeline();
 	mytree.rotateRootRightFromButton();
 };
 button_insert.onclick = function() {
-	mytimeline = newTimeline();
+	finishAction_newTimeline();
 	var x = document.getElementById("insert_value");
 	mytree.insert(Number(x.value));
 };
 button_search.onclick = function() {
-	mytimeline = newTimeline();
+	finishAction_newTimeline();
 	var x = document.getElementById("search_value");
 	var cur_time = mytimeline.currentTime;
 	mytree.searchVal(Number(x.value));
 	skipTo(cur_time);
 }
 button_delete.onclick = function() {
-	mytimeline = newTimeline();
+	finishAction_newTimeline();
 	var x = document.getElementById("delete_value");
 	var cur_time = mytimeline.currentTime;
 	mytree.popVal(x.value);
 	skipTo(cur_time);
 }
 button_newBST.onclick = function() {
-	mytimeline = newTimeline();
 	if (mytree != null)
 		mytree.destroy();
-	//mytimeline = newTimeline();
+	finishAction_newTimeline();
 	mytree = new BST();
 }
 button_newAVL.onclick = function() {
 	if (mytree != null)
 		mytree.destroy();
-	//mytimeline = newTimeline();
+	finishAction_newTimeline();
 	mytree = new AVLTree();
 }
 button_updatePos.onclick = function() {
-	if (mytree != null) {
-		mytimeline = newTimeline();
+	if (mytree != null)
 		mytree.updatePos();
-	}
+	finishAction_newTimeline();
 }
 
 

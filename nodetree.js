@@ -2,23 +2,18 @@
 // Note to self: runs very slow when timeline gets very long
 // current fix: upon each onclick action,
 // set mytimeline to new timeline;
-// it seems to work so far, and speeds things up,
-// and also it shows actions simultaneously if click, say insert, too fast
+// see finishAction_newTimeline()
 //==============================================================================
-// dummy timeline
-// used to suppress the anime.js stuff for testing
-// AVLTree runs very slowly,
-// but after using dummy instead of anime.timeline,
-// it's not slow...
-class dummy {
-	constructor(a=null) {
-		this.currentTime = 0;
-	}
-	play() {}
-	seek(t=0) {}
-	pause() {}
-	add(a=null,b=null) {}
-}
+// dummy timeline, used to suppress the anime.js stuff for testing
+//class dummytimeline {
+//	constructor(a=null) {
+//		this.currentTime = 0;
+//	}
+//	play() {}
+//	seek(t=0) {}
+//	pause() {}
+//	add(a=null,b=null) {}
+//}
 
 //==============================================================================
 // position class for convenience
@@ -131,12 +126,17 @@ function set_highlight_duration(val) {
 // anime.js uses timeline to keep track of animations to execute,
 // mytimeline.add adds to queue, executes one after another
 let mytimeline = newTimeline();
+// creates and returns a timeline object with some default settings
 function newTimeline() {
 	return anime.timeline({
-		// these settings apply to all animations added to the timeline
 		easing: 'easeInOutExpo',
 		duration: anime_duration
 	});
+}
+// forward to end of animation then set to new timeline
+function finishAction_newTimeline() {
+	mytimeline.seek(mytimeline.duration);
+	mytimeline = newTimeline();
 }
 // animation restarts if you just add an animation to timeline
 // after the javascript is done executing;
@@ -163,24 +163,23 @@ function resume() {
 	mytimeline.play();
 }
 // wrapper for adding animation
+// does the pausing and seeking stuff for you
 function add_anim(anim) {
-	var cur_time = pauseCurtime();
+	mytimeline.pause();
 	mytimeline.add(anim);
-	skipTo(cur_time);
+	resume();
 }
 // make animations simultaneous by introducing negative delay
-function add_simultaneous(anim_list) {
+function add_simul(anim_list) {
 	if (anim_list.length == 0)
 		return;
-	var cur_time = pauseCurtime();
+	mytimeline.pause();
 	mytimeline.add(anim_list[0]);
 	for (var i = 1; i < anim_list.length; i++) {
 		mytimeline.add(anim_list[i], '-=' + anime_duration);
 	}
-	skipTo(cur_time);
+	resume();
 }
-
-
 
 
 //==============================================================================
@@ -194,6 +193,7 @@ class Node {
 		this.left = null;
 		this.right = null;
 		this.height_diff = 0; // for AVLTrees
+		this.extra = null; // for anything else
 		// HTML stuff
 		this.elem = document.createElement("div");
 		this.elem.className = "divstyle";
@@ -203,15 +203,18 @@ class Node {
 		this.elem.style.zIndex = "2";
 		outdiv.append(this.elem);
 		this.elem.appendChild(create_elemValue(val));
-		this.elem.appendChild(create_elemSidevalue());
+		if (sideval != null)
+			this.elem.appendChild(create_elemSidevalue());
 		this.elem.appendChild(create_leftline());
 		this.elem.appendChild(create_rightline());
 	}
+	// garbage collection; gotta remove the HTML elem
+	// note we use add_anim to remove,
+	// otherwise it'll remove the HTML node far sooner than the rest of the animation
+	// (e.g. animation of the searching process before deletion)
 	destroy() {
 		var el = this.elem;
-		var cur_time = mytimeline.currentTime;
-		mytimeline.pause();
-		mytimeline.add({
+		add_anim({
 			targets: el,
 			easing: 'easeOutCirc',
 			duration:10,
@@ -219,14 +222,17 @@ class Node {
 				el.remove();
 			}
 		});
-		skipTo(cur_time);
 	}
 
+	// #moves
 	moveSubtreeTo(pos) {
 		this.updateSubtreePosAbstract(pos);
 		var anim_list = this.getSubtreeAnimList(pos);
-		add_simultaneous(anim_list);
+		add_simul(anim_list);
 	}
+	// #nomove
+	// this should be called after the abstract tree has been updated,
+	// returns a list of animations to be performed to reposition the HTML nodes
 	getSubtreeAnimList(pos) {
 		var node = this;
 		var el = this.elem;
@@ -269,11 +275,13 @@ class Node {
 			anim_list = anim_list.concat(this.right.getSubtreeAnimList(this.getRightChildPos()));
 		return anim_list;
 	}
+	// #nomove but uses add_simul hmmmmm
 	updateSidevalue() {
 		var anim_list = this.getUpdateSidevalueAnimList();
 		// maybe no need as duration=0
-		add_simultaneous(anim_list);
+		add_simul(anim_list);
 	}
+	// #nomove
 	getUpdateSidevalueAnimList() {
 		var el = this.get_elemSidevalue();
 		var height_diff = this.height_diff;
@@ -290,20 +298,13 @@ class Node {
 			anim_list = anim_list.concat(this.right.getUpdateSidevalueAnimList());
 		return anim_list;
 	}
+	// #nomove
 	updateSubtreePosAbstract(pos) {
 		this.pos.update(pos);
 		if (this.left != null)
 			this.left.updateSubtreePosAbstract(this.getLeftChildPos());
 		if (this.right != null)
 			this.right.updateSubtreePosAbstract(this.getRightChildPos());
-	}
-	updateSubtreeMove() {
-		this.moveSubtreeTo(this.pos);
-	}
-
-
-	moveby(shift) {
-		this.moveto(add(this.pos, shift));
 	}
 
 	compareNode(othernode) {
@@ -350,19 +351,10 @@ class Node {
 		if (move)
 			this.moveto(p.getRightChildPos());
 	}
-	setLeftSubtree(subtree_root) {
-		this.left = subtree_root;
-		if (subtree_root != null)
-			subtree_root.moveSubtreeTo(this.getLeftChildPos());
-	}
-	setRightSubtree(subtree_root) {
-		this.right = subtree_root;
-		if (subtree_root != null)
-			subtree_root.moveSubtreeTo(this.getRightChildPos());
-	}
-	setAsRoot() {
+	// #moves
+	moveToRoot() {
 		//this.moveto(root_pos);
-		var cur_time = mytimeline.currentTime;
+		//var cur_time = mytimeline.currentTime;
 		this.moveSubtreeTo(root_pos);
 		//skipTo(cur_time);
 	}
@@ -380,7 +372,10 @@ class Node {
 		return this.left == null && this.right == null;
 	}
 	//=============================================================================
-	//implement in tree?
+	// rotates subtree rooted at this
+	// returns the new root of this subtree
+	// rotateLeft and rotateRight do not update positions,
+	// as parent of this has to reset its child node
 	rotateLeft() {
 		if (this.right == null) {
 			console.log("cannot rotateLeft, rightnode is null");
@@ -389,7 +384,6 @@ class Node {
 		var rightchild = this.right;
 		this.right = rightchild.left;
 		rightchild.left = this;
-		//rightchild.updateSubtreeMove();
 		return rightchild;
 	}
 	rotateRight() {
@@ -400,36 +394,47 @@ class Node {
 		var leftchild = this.left;
 		this.left = leftchild.right;
 		leftchild.right = this;
-		//leftchild.updateSubtreeMove();
 		return leftchild;
 	}
 	highlight(color, duration=anime_duration) {
-		var cur_time = mytimeline.currentTime;
+		//var cur_time = mytimeline.currentTime;
 		var el = this.get_elemValue();
-		mytimeline.pause();
-		mytimeline.add({
+		//mytimeline.pause();
+		//mytimeline.add({
+		add_anim({
 			targets: el,
 			background: color,
 			duration: duration
 		});
-		skipTo(cur_time);
+		//resume();
+		//skipTo(cur_time);
 	}
 	unhighlight() {
 		this.highlight(WHITE, 50);
 	}
 	throwaway() {
-		this.moveto(trash_pos);
 		var leftline = this.get_leftline();
 		var rightline = this.get_rightline();
-		mytimeline.add({
-			targets: leftline, rightline,
+		var el = this.elem;
+		leftline.remove();
+		rightline.remove();
+		this.moveto(trash_pos);
+		add_anim({
+			targets: el,
 			complete: function(anim) {
-				leftline.style.display = 'none';
-				rightline.style.display = 'none';
-				leftline.remove();
-				rightline.remove();
+				el.remove();
 			}
 		});
+		//mytimeline.add({
+		//add_anim({
+		//	targets: leftline, rightline,
+		//	complete: function(anim) {
+		//		leftline.style.display = 'none';
+		//		rightline.style.display = 'none';
+		//		leftline.remove();
+		//		rightline.remove();
+		//	}
+		//});
 	}
 	//=============================================================================
 	//should be private but the #varname thing isn't working
@@ -438,23 +443,27 @@ class Node {
 		var el = this.elem;
 		var leftline = this.get_leftline();
 		var rightline = this.get_rightline();
-		var cur_time = mytimeline.currentTime;
-		mytimeline.pause();
-		mytimeline.add({
+		//var cur_time = mytimeline.currentTime;
+		//mytimeline.pause();
+		//mytimeline.add({
+		add_anim({
 			targets: el,
 			translateX: pos.x,
 			translateY: pos.y
 		});
-		mytimeline.add({
+		//mytimeline.add({
+		add_anim({
 			targets: rightline,
 			width: finalwidth
 		}, '-=' + anime_duration);
-		mytimeline.add({
+		//mytimeline.add({
+		add_anim({
 			targets: leftline,
 			width: finalwidth,
 			translateX: -finalwidth,
 		}, '-=' + anime_duration);
-		skipTo(cur_time);
+		//resume();
+		//skipTo(cur_time);
 		this.pos.update(pos);
 	}
 	updateZIndex() {
@@ -515,14 +524,16 @@ class Tree {
 	setNodeAsRoot(node) {
 		this.root = node;
 		if (node != null)
-			node.setAsRoot();
+			node.moveToRoot();
 	}
 	updatePos() {
-		this.root.setAsRoot();
+		this.setNodeAsRoot(this.root);
 	}
 	rotateRootLeftFromButton() {
 		// do this so other trees can inherit the rotate method
 		// but can prevent users from manually rotating
+		// hmm TODO this seems like bad practice...
+		// shouldn't I leave this to the button.onclick function?,
 		this.rotateRootLeft();
 	}
 	rotateRootRightFromButton() {
@@ -563,8 +574,10 @@ class Tree {
 		rightchild.left = node;
 		if (node == par.left)
 			par.left = rightchild;
-		else
+		else if (node == par.right)
 			par.right = rightchild;
+		else
+			console.log("BAD: node is not child of par!");
 		this.updatePos();
 		return;
 	}
@@ -583,14 +596,17 @@ class Tree {
 		leftchild.right = node;
 		if (node == par.left)
 			par.left = leftchild;
-		else
+		else if (node == par.right)
 			par.right = leftchild;
+		else
+			console.log("BAD: node is not child of par!");
 		this.updatePos();
 		return;
 	}
 	// puts newnode in place of node as child of prev
 	// (prev is null if node is root)
 	// nodeonly=false takes the entire subtree at newnode to node
+	// TODO i don't think I use this...
 	inPlaceOf(prev, node, newnode, nodeonly=true) {
 		if (prev == null) {
 			this.root = newnode;
@@ -620,8 +636,9 @@ class Tree {
 		//return;
 		var cur_time = mytimeline.currentTime;
 		errorbox.innerHTML = message;
-		mytimeline.pause();
-		mytimeline.add({
+		//mytimeline.pause();
+		//mytimeline.add({
+		add_anim({
 			targets: outdiv,
 			duration: 600,
 			begin: function(anim) {
@@ -634,7 +651,8 @@ class Tree {
 				//outdiv.removeChild(errorbox);
 			}
 		});
-		skipTo(cur_time);
+		//resume();
+		//skipTo(cur_time);
 	}
 }
 // end Tree class defn
