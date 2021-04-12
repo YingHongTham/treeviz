@@ -397,17 +397,12 @@ class Node {
 		return leftchild;
 	}
 	highlight(color, duration=anime_duration) {
-		//var cur_time = mytimeline.currentTime;
 		var el = this.get_elemValue();
-		//mytimeline.pause();
-		//mytimeline.add({
 		add_anim({
 			targets: el,
 			background: color,
 			duration: duration
 		});
-		//resume();
-		//skipTo(cur_time);
 	}
 	unhighlight() {
 		this.highlight(WHITE, 50);
@@ -443,28 +438,20 @@ class Node {
 		var el = this.elem;
 		var leftline = this.get_leftline();
 		var rightline = this.get_rightline();
-		//var cur_time = mytimeline.currentTime;
-		//mytimeline.pause();
-		//mytimeline.add({
 		add_anim({
 			targets: el,
 			translateX: pos.x,
 			translateY: pos.y
 		});
-		//mytimeline.add({
 		add_anim({
 			targets: rightline,
 			width: finalwidth
 		}, '-=' + anime_duration);
-		//mytimeline.add({
 		add_anim({
 			targets: leftline,
 			width: finalwidth,
 			translateX: -finalwidth,
 		}, '-=' + anime_duration);
-		//resume();
-		//skipTo(cur_time);
-		//this.pos.update(pos); //why is this even here?
 	}
 	updateZIndex() {
 		this.elem.style.zIndex = `${this.getlevel()}`;
@@ -636,8 +623,6 @@ class Tree {
 		//return;
 		var cur_time = mytimeline.currentTime;
 		errorbox.innerHTML = message;
-		//mytimeline.pause();
-		//mytimeline.add({
 		add_anim({
 			targets: outdiv,
 			duration: 600,
@@ -651,8 +636,6 @@ class Tree {
 				//outdiv.removeChild(errorbox);
 			}
 		});
-		//resume();
-		//skipTo(cur_time);
 	}
 }
 // end Tree class defn

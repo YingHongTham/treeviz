@@ -120,7 +120,7 @@ class BST extends Tree {
 				else
 					cur = cur.right;
 			}
-			//this.updatePos();
+			//this.updatePos(); // this is probably not needed..
 		}
 		this.updatePos();
 	}
