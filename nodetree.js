@@ -64,6 +64,7 @@ const WHITE = 'rgb(255,255,255)';
 // set the div element that is to contain the tree
 function set_outdiv(elem) {
 	outdiv = elem;
+	outdiv.style.position = "absolute";
 }
 
 // level_diff determines the difference in y-coord between levels of tree

@@ -2,8 +2,8 @@
 // initialize
 
 set_level_diff(80.0);
-set_start_pos(30,50);
-set_root_pos(screen.width/2, 50);
+set_start_pos(30,30);
+set_root_pos(screen.width/2, 30);
 set_trash_pos(30, 2*level_diff);
 set_compare_offset(40, 0);
 set_outdiv(document.getElementById("outdiv"));
@@ -91,6 +91,7 @@ button_updatePos.onclick = function() {
 class BST extends Tree {
 	constructor() {
 		super();
+		this.showMessage("Initialized BST");
 	}
 	insert(val) {
 		var newnode = new Node(val);
@@ -237,6 +238,7 @@ class BST extends Tree {
 class SplayTree extends BST {
 	constructor() {
 		super();
+		this.showMessage("Initialized SplayTree");
 	}
 	splay(val) {
 		if (this.root == null)
@@ -360,6 +362,7 @@ class SplayTree extends BST {
 class AVLTree extends BST {
 	constructor() {
 		super();
+		this.showMessage("Initialized AVLTree");
 	}
 	updatePosAVL() {
 		this.updatePos();

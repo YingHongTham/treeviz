@@ -10,7 +10,10 @@ without having to deal with the positioning of nodes.
 It should separate the manipulation of nodes/tree structure
 from the positioning of nodes on the webpage.
 
-Tree implements basic operations of a tree,
+[Demo](https://yinghongtham.github.io/treeviz/)
+
+nodetree.js provide two classes, Tree and Node.
+The Tree class implements basic operations of a tree,
 the main one being updatePos(),
 which would typically be used after each operation
 to move the nodes to their new positions.
@@ -30,18 +33,18 @@ There is also a height_diff attribute that is used for AVL Tree.
 
 One may construct a simple tree as follows:
 
-var x = 1, y = 2;
+	var x = 1, y = 2;
 
-tree = new Tree();
-tree.setNodeAsRoot(new Node(x));
+	tree = new Tree();
+	tree.setNodeAsRoot(new Node(x));
 
-var n = new Node(y);
-comp = n.compareNode(tree.root);
-if (comp <= 0)
-	n.setAsLeftChildOf(tree.root);
-else
-	n.setAsRightChildOf(tree.root);
-tree.updatePos();
+	var n = new Node(y);
+	comp = n.compareNode(tree.root);
+	if (comp <= 0)
+		n.setAsLeftChildOf(tree.root);
+	else
+		n.setAsRightChildOf(tree.root);
+	tree.updatePos();
 
 
 Of course, the point is to learn to implement various binary search trees,
