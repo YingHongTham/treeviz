@@ -65,6 +65,7 @@ For a node n = new Node(val);
 	(similar for setAsRightChildOf)
 	TODO probably best to simply call updatePos after setting left/right child abstractly
 - n.destroy() for cleaning up the HTML stuff
+
 For a tree t = new Tree();
 - t.root is the root node,
 - t.updatePos() moves HTML nodes to new position,

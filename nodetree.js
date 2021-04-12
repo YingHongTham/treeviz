@@ -464,7 +464,7 @@ class Node {
 		}, '-=' + anime_duration);
 		//resume();
 		//skipTo(cur_time);
-		this.pos.update(pos);
+		//this.pos.update(pos); //why is this even here?
 	}
 	updateZIndex() {
 		this.elem.style.zIndex = `${this.getlevel()}`;

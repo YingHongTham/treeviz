@@ -14,7 +14,7 @@ set_errorbox(errorbox_tmp);
 set_node_radius(20);
 set_horiz(screen.width * 1.0 / 3);
 set_anime_duration(300);
-set_highlight_duration(500);
+set_highlight_duration(100);
 //const RED = 'rgb(255,0,0)';
 //const YELLOW = 'rgb(128,128,0)';
 //const GREEN = 'rgb(0,255,0)';
@@ -120,7 +120,7 @@ class BST extends Tree {
 				else
 					cur = cur.right;
 			}
-			this.updatePos();
+			//this.updatePos();
 		}
 		this.updatePos();
 	}
