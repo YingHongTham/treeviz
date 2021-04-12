@@ -438,20 +438,18 @@ class Node {
 		var el = this.elem;
 		var leftline = this.get_leftline();
 		var rightline = this.get_rightline();
-		add_anim({
+		add_simul([ {
 			targets: el,
 			translateX: pos.x,
 			translateY: pos.y
-		});
-		add_anim({
+		}, {
 			targets: rightline,
 			width: finalwidth
-		}, '-=' + anime_duration);
-		add_anim({
+		}, {
 			targets: leftline,
 			width: finalwidth,
 			translateX: -finalwidth,
-		}, '-=' + anime_duration);
+		}]);
 	}
 	updateZIndex() {
 		this.elem.style.zIndex = `${this.getlevel()}`;
