@@ -1,7 +1,7 @@
 Treeviz
 =======
 
-Visualizing binary trees without the hassle
+Library for Visualizing Binary Trees
 --------
 
 The goal of this project is to provide an easy way
