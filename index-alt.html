@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html>
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<head>
+		<title>Treeviz</title>
+		<style>
+			body {
+				font-family: verdana; 
+				font-size: 15px;
+			}			
+			.button {
+				background-color: #606060;
+				border: none;
+				color: white;
+				padding: 10px 32px;
+				font-size: 16px;
+				margin: 4px 2px;
+				cursor: pointer;
+			}
+			.slider {
+				-webkit-appearance: none;
+				width: 80px;
+				height: 6px;
+				border-radius: 5px;
+				background: #d3d3d3;
+				outline: none;
+				opacity: 0.7;
+				-webkit-transition: .2s;
+				transition: opacity .2s;
+			}
+		</style>
+	</head>
+	
+<body>
+
+	<button class="button" onclick="resetScene()">Restart</button>
+	<button class="button" onclick="pauseAnim()">Pause</button>
+	<button class="button" onclick="playAnim()">Play</button>
+	Restitution <input type = "range" min = "0" max = "10" value = "10" id = "restitutionSlider" class = "slider">
+	<br>
+	<canvas id="myCanvas" style="border:2px solid"></canvas>
+
+	<script src="TreeNode.js"></script>
+	
+<script>
+
+  // setup canvas stuff
+	var canvas = document.getElementById("myCanvas");
+	var c = canvas.getContext("2d");
+
+	canvas.width = window.innerWidth - 20;
+	canvas.height = window.innerHeight - 100;
+
+  // scaling between position and canvas
+  const simHorizLimit = 100.0;
+	var cScale = canvas.width / simHorizLimit;
+	var simWidth = canvas.width / cScale; // =100.0
+	var simHeight = canvas.height / cScale;
+
+	function cX(pos) {
+		return pos.x * cScale;
+	}
+
+	function cY(pos) {
+		return canvas.height - pos.y * cScale;
+	}
+
+
+	// draw -------------------------------------------------------
+
+	function draw() {
+		c.clearRect(0, 0, canvas.width, canvas.height);
+
+		c.fillStyle = "#FF0000";
+
+		for (i = 0; i < physicsScene.balls.length; i++) {
+			var ball = physicsScene.balls[i];
+			c.beginPath();
+			c.ellipse(
+				cX(ball.pos), cY(ball.pos),
+        cScale * ball.radius * (1 + Math.sin(t / 2.0)/10.0),
+        cScale * ball.radius * (1 - Math.sin(t / 2.0)/10.0),
+        0, 0.0, 2.0 * Math.PI); 
+			c.closePath();
+			if (t > 0) {
+				c.fillStyle = "#FF5500";
+			}
+			else {
+				c.fillStyle = "#FF0000";
+			}
+			c.fill();
+		}
+	}
+
+	// run simulation ---------------
+
+	let count = 0;
+	let timeElapsed = 0;
+	let animateBool = true;
+	function update() {
+		if (!animateBool) {
+			return;
+		}
+		var start = Date.now();
+		physicsScene.simulate();
+		draw();
+		count++;
+		timeElapsed += Date.now() - start;
+		if (count >= 20) {
+			count = 0;
+			timeElapsed = 0;
+		}
+		requestAnimationFrame(update);
+	}
+	
+	update();
+
+
+	function resetScene() {
+		physicsScene.setupSceneRandom();
+	}
+
+	function pauseAnim() {
+		animateBool = false;
+	}
+
+	function playAnim() {
+		animateBool = true;
+		update();
+	}
+
+	
+</script> 
+</body>
+</html>
+
