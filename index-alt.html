@@ -46,7 +46,7 @@
 
   // setup canvas stuff
 	var canvas = document.getElementById("myCanvas");
-	var c = canvas.getContext("2d");
+	var ctx = canvas.getContext("2d");
 
 	canvas.width = window.innerWidth - 20;
 	canvas.height = window.innerHeight - 100;
@@ -68,31 +68,29 @@
 
 	// draw -------------------------------------------------------
 
+  var startPos = {
+     x: 10,
+     y: 10,
+   };
+  var nn = new TreeNode(5, startPos, ctx);
+
 	function draw() {
-		c.clearRect(0, 0, canvas.width, canvas.height);
+		ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-		c.fillStyle = "#FF0000";
+		ctx.fillStyle = "#FF0000";
 
-		for (i = 0; i < physicsScene.balls.length; i++) {
-			var ball = physicsScene.balls[i];
-			c.beginPath();
-			c.ellipse(
-				cX(ball.pos), cY(ball.pos),
-        cScale * ball.radius * (1 + Math.sin(t / 2.0)/10.0),
-        cScale * ball.radius * (1 - Math.sin(t / 2.0)/10.0),
-        0, 0.0, 2.0 * Math.PI); 
-			c.closePath();
-			if (t > 0) {
-				c.fillStyle = "#FF5500";
-			}
-			else {
-				c.fillStyle = "#FF0000";
-			}
-			c.fill();
-		}
+    var pos = nn.getPos(Date.now());
+
+		ctx.beginPath();
+		ctx.ellipse(
+			cX(pos), cY(pos),
+      cScale * nn.radius,
+      cScale * nn.radius,
+      0, 0.0, 2.0 * Math.PI); 
+		ctx.closePath();
+		ctx.fillStyle = "#FF5500";
+		ctx.fill();
 	}
-
-	// run simulation ---------------
 
 	let count = 0;
 	let timeElapsed = 0;
@@ -102,11 +100,11 @@
 			return;
 		}
 		var start = Date.now();
-		physicsScene.simulate();
 		draw();
 		count++;
 		timeElapsed += Date.now() - start;
 		if (count >= 20) {
+      //nn.pos.x += 1;
 			count = 0;
 			timeElapsed = 0;
 		}
@@ -116,10 +114,6 @@
 	update();
 
 
-	function resetScene() {
-		physicsScene.setupSceneRandom();
-	}
-
 	function pauseAnim() {
 		animateBool = false;
 	}
@@ -128,6 +122,12 @@
 		animateBool = true;
 		update();
 	}
+
+  var numClicks = 1;
+  canvas.addEventListener('mousedown', (e) => {
+    nn.addAnimMove(null, {x: 5, y: 8 * ((numClicks % 2) ? 1 : -1)});
+    numClicks++;
+  });
 
 	
 </script> 
