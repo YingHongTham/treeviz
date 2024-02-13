@@ -7,25 +7,32 @@
 	</head>
 
 <body>
-	Basic demo using nodetree.js. BST and AVLTree are classes that extend Tree.<br/>
+	Basic demo using nodetree.js. BST and AVLTree are classes that extend Tree.
+	<a href="https://github.com/YingHongTham/treeviz">GitHub repo</a><br/>
+	<!--
 	Click "New BST" for a new Binary Search Tree.<br/>
 	Click "New AVL" for a new AVL Tree.<br/>
-	Click "Update Position" if the tree looks weird.<br/>
-	<a href="https://github.com/YingHongTham/treeviz">Back to github</a><br/>
+	(Sometimes tree looks weird due to some "lag" from animemin.js... click
+	"Update Position" to fix)<br/>
+	<button id="button_updatePos">Update position</button>
+	-->
 
 	<button id="button_newBST">New BST</button>
 	<button id="button_newAVL">New AVL</button>
-	<button id="button_updatePos">Update position</button>
 	<br/>
 	<div class="chart" id="tree"></div>
-	<button id="button_rotate_left">Rotate <u>L</u>eft</button>
-	<button id="button_rotate_right">Rotate <u>R</u>ight</button>
-	<input type="text" id="insert_value">
-	<button id="button_insert">Insert</button>
-	<input type="text" id="search_value">
-	<button id="button_search">Search</button>
-	<input type="text" id="delete_value">
-	<button id="button_delete">Delete</button>
+	<div id="actionButtons" style="display:none">
+		<div id="rotateButtons">
+			<button id="button_rotate_left">Rotate <u>L</u>eft</button>
+			<button id="button_rotate_right">Rotate <u>R</u>ight</button>
+		</div>
+		<input type="text" id="insert_value">
+		<button id="button_insert">Insert</button>
+		<input type="text" id="search_value">
+		<button id="button_search">Search</button>
+		<input type="text" id="delete_value">
+		<button id="button_delete">Delete</button>
+	</div>
 	<br/>
 	<div id="outdiv"></div>
 	<br/>

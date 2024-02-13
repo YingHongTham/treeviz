@@ -71,18 +71,26 @@ button_newBST.onclick = function() {
 		mytree.destroy();
 	finishAction_newTimeline();
 	mytree = new BST();
+	const actionButtons = document.getElementById("actionButtons");
+	actionButtons.style.display = "block";
+	const rotateButtons = document.getElementById("rotateButtons");
+	rotateButtons.style.display = "block";
 }
 button_newAVL.onclick = function() {
 	if (mytree != null)
 		mytree.destroy();
 	finishAction_newTimeline();
 	mytree = new AVLTree();
+	const actionButtons = document.getElementById("actionButtons");
+	actionButtons.style.display = "block";
+	const rotateButtons = document.getElementById("rotateButtons");
+	rotateButtons.style.display = "none";
 }
-button_updatePos.onclick = function() {
-	if (mytree != null)
-		mytree.updatePos();
-	finishAction_newTimeline();
-}
+//button_updatePos.onclick = function() {
+//	if (mytree != null)
+//		mytree.updatePos();
+//	finishAction_newTimeline();
+//}
 
 
 //=============================================================================
